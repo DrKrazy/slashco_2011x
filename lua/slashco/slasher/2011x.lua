@@ -53,7 +53,7 @@ SLASHER.StunTime = 8
 
 -- 2011X Specific Parameters (sorry to whoever wants to balance this fucking slasher lmfao)
 SLASHER.XSettings = {
-
+	chaseColor = Color(0, 50, 255),
 	-- Passives
 	Clones = {
 		spawnTimer = 1,					-- Time between each spawn
@@ -230,12 +230,14 @@ end
  ]]
 
 -- When the slasher first spawns in
+
 function SLASHER.OnSpawn(slasher)
 	slasher:SetNWBool("CanChase", false)
+	slasher:SetNWBool("NoChaseLight", true)
 
 	-- Please dont touch anything between these two comments
 	slasher:SetNWBool("2011xStunned", false)
-
+	slasher:SetNWBool("ChaseLight", false) -- To disable chase light
 
 	slasher:SetNWFloat("2011xLMBCooldown", 0)
 	slasher:SetNWFloat("2011xFakeItemCooldown", 0)
@@ -326,7 +328,9 @@ function SLASHER.OnTickBehaviour(slasher)
 	slasher:SetNWBool("2011xCanFakeItem", not tobool(slasher:GetNWFloat("2011xFakeItemCooldown") > 0 or slasher:GetNWFloat("2011xGlobalCooldown") > 0 or slasher:GetNWBool("2011xStunned")) )
 	slasher:SetNWBool("2011xCanCharge", not tobool(slasher:GetNWFloat("2011xChargeCooldown") > 0 or slasher:GetNWFloat("2011xGlobalCooldown") > 0 or slasher:GetNWBool("2011xStunned")) )
 	slasher:SetNWBool("2011xCanTpToClone", not tobool(slasher:GetNWFloat("2011xTpToCloneCooldown") > 0 or slasher:GetNWFloat("2011xGlobalCooldown") > 0 or not (traceClone.Entity:IsValid() and traceClone.Entity:GetClass() == "sc_x_clone") or slasher:GetNWBool("2011xStunned")) )
-	slasher:SetNWBool("2011xCanDetonate", tobool(traceMisc.Entity:IsValid() and traceMisc.Entity:GetClass() == "sc_x_fakeitem") and slasher:GetNWFloat("2011xDetonateCooldown") <= 0 and slasher:GetNWFloat("2011xGlobalCooldown") <= 0)
+	slasher:SetNWBool("2011xCanDetonate", tobool(slasher:GetNWFloat("2011xDetonateCooldown") <= 0 and slasher:GetNWFloat("2011xGlobalCooldown") <= 0))
+	
+	slasher:SetNWBool("2011xLookingAtFakeItem", tobool(traceMisc.Entity:IsValid() and traceMisc.Entity:GetClass() == "sc_x_fakeitem"))
 
 	-- Logic for the charge, i wanna die this code fucking sucks
 	if slasher:GetNWBool("2011xCharging") then
@@ -378,9 +382,13 @@ function SLASHER.OnPrimaryFire(slasher)
 		if target:Health() <= SLASHER.XSettings.LMB.damage then
 			SlashCo.Jumpscare(slasher, target)
 			slasher:Freeze(true)
+
 			timer.Simple(SLASHER.JumpscareDuration / 2, function()
 				slasher:Freeze(false)
+				target:Kill()
 			end)
+
+			return
 		end
 
 		local effect = EffectData()
@@ -442,11 +450,15 @@ function SLASHER.OnSpecialAbilityFire(slasher)
 		}
 	)
 
+	-- We swap em
 	if (trace.Hit and trace.Entity:IsValid()) then
-		spawnTpClone(slasher:GetPos(), slasher:GetAngles())
+		local tempPos, tempAngle = slasher:GetPos(), slasher:GetAngles()
+
 		slasher:SetPos(trace.Entity:GetPos())
 		slasher:SetEyeAngles(trace.Entity:GetAngles())
-		trace.Entity:Remove()
+
+		trace.Entity:SetPos(tempPos)
+		trace.Entity:SetAngles(tempAngle)
 	end
 
 end
@@ -491,15 +503,6 @@ SLASHER.OnHitByBeerKeg = function(slasher) SLASHER.OnHitByPocketSand(slasher, ni
 SLASHER.OnHitByTeslaCoil = function(slasher) SLASHER.OnHitByPocketSand(slasher, nil) end
 
 function SLASHER.InitHud(_, hud)
-
-	handleCooldowns = {
-		{ controlKey = "R", 			controlName = "X_charge", 		netVarCD = "2011xChargeCooldown", 		netVarTie = "2011xCanCharge"},
-		{ controlKey = "F", 			controlName = "X_teleport",		netVarCD = "2011xTpToCloneCooldown", 	netVarTie = "2011xCanTpToClone"},
-		{ controlKey = "MOUSE WHEEL", 	controlName = "X_detonate", 	netVarCD = "2011xDetonateCooldown", 	netVarTie = "2011xCanDetonate"},
-		{ controlKey = "RMB", 			controlName = "X_fakeItem", 	netVarCD = "2011xFakeItemCooldown", 	netVarTie = "2011xCanFakeItem"},
-		{ controlKey = "LMB",			controlName = "kill survivor", 	netVarCD = "2011xLMBCooldown", 			netVarTie = "2011xCanLMB"},
-	}
-
 	hud:SetTitle(SLASHER.Name)
 	hud:SetCrosshairEnabled(true)
 	hud:SetCrosshairAlpha(255)
@@ -517,17 +520,28 @@ function SLASHER.InitHud(_, hud)
 		TightenOff = 5
 	})
 
+	-- Control Stuff
+	-- This was made to make creating the controls and editing them easier for the cooldown system
+	handleCooldowns = {
+		{ controlKey = "R", 			controlName = "X_charge", 		netVarCD = "2011xChargeCooldown", 		netVarTie = "2011xCanCharge", 		preventOverwrite = false},
+		{ controlKey = "F", 			controlName = "X_teleport",		netVarCD = "2011xTpToCloneCooldown", 	netVarTie = "2011xCanTpToClone", 	preventOverwrite = false},
+		{ controlKey = "MOUSE WHEEL", 	controlName = "X_detonate", 	netVarCD = "2011xDetonateCooldown", 	netVarTie = "2011xCanDetonate", 	preventOverwrite = true},
+		{ controlKey = "RMB", 			controlName = "X_fakeItem", 	netVarCD = "2011xFakeItemCooldown", 	netVarTie = "2011xCanFakeItem", 	preventOverwrite = false},
+		{ controlKey = "LMB",			controlName = "kill survivor", 	netVarCD = "2011xLMBCooldown", 			netVarTie = "2011xCanLMB", 			preventOverwrite = false},
+	}
+
 	for _, curControl in pairs(handleCooldowns) do
 		hud:AddControl(curControl.controlKey, "")
 		hud:TieControl(curControl.controlKey, curControl.netVarTie, false, true, nil)
 	end
 
 	local slasher = GameData.LocalPlayer
+
 	function hud.AlsoThink()
 		local globalCooldown = slasher:GetNWFloat("2011xGlobalCooldown", 0)
 
 		local curFakeItemSelection = slasher:GetNWInt("2011xCurFakeItemSelection", 1)
-		if (slasher:GetNWBool("2011xCanDetonate")) then
+		if (slasher:GetNWBool("2011xLookingAtFakeItem")) then
 			hud:SetControlText("MOUSE WHEEL", "detonate", true)
 		else
 			hud:SetControlText("MOUSE WHEEL", tostring(SLASHER.XSettings.FakeItem.spawnList[curFakeItemSelection].pingtype), true)
@@ -539,9 +553,9 @@ function SLASHER.InitHud(_, hud)
 			if highestCooldown > 0 then
 				hud:SetControlText(
 					curControl.controlKey,
-					string.format("[%s] %s", math.Round(highestCooldown, 1), SlashCo.LangTable[curControl.controlName])
+					string.format("[ %s ] %s", math.Round(highestCooldown, 1), SlashCo.LangTable[curControl.controlName])
 				)
-			elseif (curControl.controlKey ~= "MOUSE WHEEL") then
+			elseif (not curControl.preventOverwrite) then
 				hud:SetControlText(
 					curControl.controlKey,
 					curControl.controlName
@@ -555,6 +569,30 @@ end
 function SLASHER.PreDrawHalos()
 	SlashCo.DrawHalo(ents.FindByClass("sc_x_clone"), color_red, nil, true)
 	SlashCo.DrawHalo(ents.FindByClass("sc_x_fakeitem"), color_red, nil, true)
+end
+
+-- For client hooks
+
+if CLIENT then
+	hook.Add("Think", "FakeChaseLight", function()
+		for _, slasher in ipairs(team.GetPlayers(TEAM_SLASHER)) do
+			if not slasher:GetNWBool("InSlasherChaseMode") then return end
+
+			local dlight = DynamicLight(slasher:EntIndex())
+			if dlight then
+				dlight.pos = slasher:LocalToWorld(Vector(0,0,40))
+				dlight.r = SLASHER.XSettings.chaseColor.r
+				dlight.g = SLASHER.XSettings.chaseColor.g
+				dlight.b = SLASHER.XSettings.chaseColor.b
+				dlight.brightness = 4
+
+				local size = 250
+				dlight.Decay = size * 4
+				dlight.Size = size
+				dlight.DieTime = CurTime() + 100
+			end
+		end
+	end)
 end
 
 -- For server hooks
@@ -577,19 +615,12 @@ if SERVER then
 		if CLIENT then return end
 
 		local ply = pingInfo.Player
-
-		if isnumber(ply) then
-			ply = Entity(ply)
-		end
-
-		if not IsValid(ply) then return end
+		if isnumber(ply) then ply = Entity(ply) end
 
 		local entity = pingInfo.Entity
-		if isnumber(entity) then
-			entity = Entity(entity)
-		end
+		if isnumber(entity) then entity = Entity(entity) end
 
-		if not IsValid(entity) then return end
+		if not IsValid(entity) or not IsValid(ply) then return end
 
 		if entity:GetClass() == "sc_x_fakeitem" then
 			if pingInfo.Team == TEAM_SURVIVOR then
