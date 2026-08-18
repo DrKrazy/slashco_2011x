@@ -233,7 +233,7 @@ end
 
 function SLASHER.OnSpawn(slasher)
 	slasher:SetNWBool("CanChase", false)
-	slasher:SetNWBool("NoChaseLight", true)
+	slasher:SetNWBool("DisableChaseLight", true)
 
 	-- Please dont touch anything between these two comments
 	slasher:SetNWBool("2011xStunned", false)
