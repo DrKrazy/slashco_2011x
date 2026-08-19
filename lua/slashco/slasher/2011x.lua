@@ -483,6 +483,18 @@ function SLASHER.OnSpecialAbilityFire(slasher)
 	end
 end
 
+-- This will be used to highlight players close enough to a clone, thank you very much Xerk
+function SLASHER.PreDrawHalos()
+	local plyMarked = {}
+	for _, survivor in ipairs(team.GetPlayers(TEAM_SURVIVOR)) do
+		if survivor:GetNWBool("GetMarked") then
+			table.insert(plyMarked, survivor)
+		end
+	end
+
+	SlashCo.DrawHalo(plyMarked, "blue", 2, true)
+end
+
 --[[ 
 Will be done later
 
