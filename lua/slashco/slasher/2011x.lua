@@ -595,8 +595,8 @@ if CLIENT then
 	hook.Add("Think", "FakeChaseLight", function()
 		for _, slasher in ipairs(team.GetPlayers(TEAM_SLASHER)) do
 			if not slasher:GetNWBool("InSlasherChaseMode") then return end
+			local dlight = DynamicLight(slasher:UserID())
 
-			local dlight = DynamicLight(slasher:EntIndex())
 			if dlight then
 				dlight.pos = slasher:LocalToWorld(Vector(0,0,40))
 				dlight.r = SLASHER.XSettings.chaseColor.r

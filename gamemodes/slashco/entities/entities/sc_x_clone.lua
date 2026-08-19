@@ -65,7 +65,7 @@ if CLIENT then
 	local chaseColor = Color(0, 50, 255)
 
 	function ENT:Think()
-		local client = LocalPlayer()
+		local client = LocalPlayer() or GameData.LocalPlayer()
 
 		if not IsValid(client) or not IsValid(self) then return end
 		if (client:Team() ~= TEAM_SURVIVOR) then return end
