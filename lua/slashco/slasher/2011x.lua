@@ -226,11 +226,19 @@ end
 
 function damagePlayer(slasher, victim, damage, damageForce)
 	if victim:IsValid() and victim:IsPlayer() then
-
 		-- If the victim is one hit, we jumpscare them instead (need to add jumps)
 		if victim:Health() <= SLASHER.XSettings.LMB.damage then
-			SlashCo.Jumpscare(slasher, victim)
-			return
+			slasher:Freeze(true)
+
+			timer.Simple(SLASHER.JumpscareDuration / 2, function()
+				if IsValid(slasher) and slasher:IsPlayer() then
+					victim:TakeDamage(victim:Health() + 10, slasher, slasher)
+				else
+					victim:Kill()
+				end
+				slasher:Freeze(false)
+			end)
+			return true
 		end
 
 		local effect = EffectData()
@@ -247,7 +255,9 @@ function damagePlayer(slasher, victim, damage, damageForce)
 
 		effect:SetOrigin(victim:GetPos() + Vector(0,0,40))
 		util.Effect("BloodImpact", effect)
+		return true
 	end
+	return false
 end
 
 -- Stock SlashCo Functions
@@ -544,12 +554,12 @@ function SLASHER.InitHud(_, hud)
 
 	hud:TieCrosshair({
 		"2011xCanTpToClone",
-		"2011xCanDetonate",
+		"2011xLookingAtFakeItem",
 		InvertOutput = true,
 		IsOr = true
 	}, {
 		TightenOn = 20,
-		TightenOff = 5
+		TightenOff = 0
 	})
 
 	-- Control Stuff
@@ -597,8 +607,7 @@ end
 
 -- Draws halos around the specific items, its cool
 function SLASHER.PreDrawHalos()
-	SlashCo.DrawHalo(ents.FindByClass("sc_x_clone"), nil, nil, true)
-	SlashCo.DrawHalo(ents.FindByClass("sc_x_fakeitem"), nil, nil, true)
+	SlashCo.DrawHalo(ents.FindByClass("sc_x_*"), Color(0,89,255), nil, true)
 end
 
 -- For client hooks
