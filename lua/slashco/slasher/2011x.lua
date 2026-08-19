@@ -50,9 +50,13 @@ SLASHER.StunTime = 8
 SLASHER.XSettings = {
 	chaseColor = Color(0, 50, 255),
 
+	-- Uses pingInfo.Type and a Slasher's name (both in lowercase) and associates it to a voiceline for 2011x
 	specialInteractions = {
-		["Postal Dude"] = "fuckyou",
-		["Criminal"] = "pieceofshit",
+		["survivor"] = { "pieceofshit", "fuckyou" },
+		["generator"] = "pieceofshit",
+		["item"] = "fuckyou",
+		["sid"] = "pieceofshit",
+		["postal dude"] = "fuckyou",
 	},
 
 	-- Passives
@@ -65,7 +69,11 @@ SLASHER.XSettings = {
 		flRange = 200,					-- Range for the flishlight to work against the clones
 		flTicks = 2						-- How much time (in seconds) you need to keep your flashlight on the clone for it to dissapear
 	},
+
 	-- Abilities
+	-- Every ability has a shared globalCooldown variable.
+
+	-- Left Click (normal attack)
 	LMB = {
 		cooldown = 1,
 		globalCooldown = 1,
@@ -76,6 +84,7 @@ SLASHER.XSettings = {
 		windup = 0.5,
 	},
 
+	-- Right Click (spawns an explosive item that explodes on use or if pinged by 2011x)
 	FakeItem = {
 		cooldown = 1,						-- Cooldown between this ability's uses
 		spawnLimit = 4,						-- Max amount of fake items you can spawn
@@ -89,6 +98,12 @@ SLASHER.XSettings = {
 
 		slasherKnockback = false, 			-- Force of the explosion will also apply to the slasher (rocket jumping)
 
+		-- Sub ability of fake items, used when they're detonated via ping
+		Detonate = {
+			cooldown = 6,
+			globalCooldown = 0
+		},
+
 		-- List of items that X can spawns with FakeItem
 		-- Ping type can't be retrieved from mimic entity, so we have to set it manually
 		spawnList = {
@@ -99,11 +114,7 @@ SLASHER.XSettings = {
 		},
 	},
 
-	Detonate = {
-		cooldown = 6,
-		globalCooldown = 0
-	},
-
+	-- Charge ability, used for closing distance really fast or getting a kill if a survivor is out in the open
 	Charge = {
 		cooldown = 2,					-- Cooldown between this ability's uses
 		duration = 3,					-- Total duration of charge
@@ -118,6 +129,7 @@ SLASHER.XSettings = {
 
 	},
 
+	-- When looking at a clone from anywhere i nthe map you can swap positions with it, usefull for ambushes
 	TpToClone = {
 		globalCooldown = 1,				-- Global cooldown on all abilities when used (prevents being able to instantly do stuff after manifesting)
 		cooldown = 2,					-- Cooldown between this ability's uses
@@ -129,13 +141,13 @@ SLASHER.XSettings = {
 -- We do be precachin
 hook.Add("SlashCo:Precache", "SlashCo:PrecacheBeacon", function()
 	for slasher, voiceline in pairs(table) do
-		SlashCo.PrecacheSound("slashco/slasher/2011x/specialinteraction_" .. voiceline .. ".mp3")
+		SlashCo.PrecacheSound("slashco/slasher/2011x/specialinteraction_" .. tostring(voiceline) .. ".mp3")
 	end
 end)
 
 -- Functions used for abilities
 
--- Copied sayprompt logic sofake item do the proper voicelines
+-- Logic to make either survivor or 2011x say a voice line (might be refined later)
 function sayPrompt(ply, input)
 	if ply:Team() == TEAM_SURVIVOR then
 		ply:EmitSound("slashco/survivor/voice/prompt_" .. input .. math.random(1,3) .. ".mp3")
@@ -144,7 +156,7 @@ function sayPrompt(ply, input)
 	end
 end
 
--- Getting the voiceline suffix by ping type, it's way nice for the configuring
+-- Getting the voiceline suffix by ping type for fake items, used for survivors mainly
 local function GetVoiceByPingType(pingtype)
 	for _, item in ipairs(SLASHER.XSettings.FakeItem.spawnList) do
 		if item.pingtype == pingtype then
@@ -170,10 +182,10 @@ function endCharge(slasher, victim, doStun, stunTime)
 		victim:TakeDamageInfo(dmg)
 	end
 
-	if (doStun) then SLASHER.OnHitByPocketSand(slasher, nil, nil, stunTime) end
+	if (doStun) then SLASHER.OnHitByPocketSand(slasher, nil, stunTime) end
 end
 
--- Spawns the fake itemwith all its relevant stats
+-- Spawns the fake item with all its relevant stats
 function spawnFakeItem(slasher)
 	local selectedFakeItem = SLASHER.XSettings.FakeItem.spawnList[slasher:GetNWInt("2011xCurFakeItemSelection")]
 
@@ -261,12 +273,12 @@ function SLASHER.OnSpawn(slasher)
 	slasher:SetNWBool("2011xCharging", false )
 	slasher:GetNWBool("2011xCanDetonate", false)
 	slasher:SetNWInt("2011xCurFakeItemSelection", 1)
-	slasher:SetCustomCollisionCheck(true)
 
 	slasher.canCrash = false
 	-- Please dont touch anything between these two comments
 
 	-- Timer set to happen infinitely, timer.IsPaused isnt available yet so we just do the comparing init
+	-- Need a way to pause this time when there is no 2011x, i can't find a function for it though, help
 	timer.Create("passiveClones" .. slasher:EntIndex(),SLASHER.XSettings.Clones.spawnTimer, -1, function()
 		if not IsValid(slasher) then return end
 		if (#ents.FindByClass("sc_x_clone") >= SLASHER.XSettings.Clones.maxAmount) then return end
@@ -275,7 +287,8 @@ function SLASHER.OnSpawn(slasher)
 	end)
 end
 
--- This happens on every tick, try to not spam too much in there as it could slow down the server a bit
+-- This happens on every tick, lord have mercy this shit sucks
+-- Sorry to whoever wants to take a look into this
 function SLASHER.OnTickBehaviour(slasher)
 	local final_eyesight = SLASHER.Eyesight
 	local final_perception = SLASHER.Perception
@@ -291,7 +304,7 @@ function SLASHER.OnTickBehaviour(slasher)
 		}
 	)
 
-	-- Used for both the LMB check and the MOUSE WHEEL change to "Detonate" for fake items
+	-- Used for the MOUSE WHEEL text change to "Detonate" for fake items
 	local traceMisc = slasher:GetEyeTrace()
 	slasher:LagCompensation(false)
 
@@ -347,7 +360,7 @@ function SLASHER.OnTickBehaviour(slasher)
 	if slasher:GetNWBool("2011xCharging") then
 		slasher:SetVelocity(slasher:GetAimVector() * SLASHER.XSettings.Charge.speed)
 
-		-- The charge crash logic, it's ass
+		-- The charge crash logic, it's ass, this shit needs to be changed asap to depends on normals
 		if (SLASHER.XSettings.Charge.crashLogic) then
 			local curVel = slasher:GetVelocity():Length()
 			if (curVel > SLASHER.XSettings.Charge.crashActivateThreshold) then slasher.canCrash = true end
@@ -362,7 +375,6 @@ function SLASHER.OnTickBehaviour(slasher)
 end
 
 -- Left click
--- 
 function SLASHER.OnPrimaryFire(slasher)
 	if not IsValid(slasher) then return end
 	if not slasher:GetNWBool("2011xCanLMB") then return end
@@ -427,7 +439,7 @@ function SLASHER.OnPrimaryFire(slasher)
 	end
 end
 
--- The right click
+-- Right click
 function SLASHER.OnSecondaryFire(slasher)
 	if not slasher:GetNWBool("2011xCanFakeItem") then return end
 	slasher:SetNWFloat("2011xFakeItemCooldown", SLASHER.XSettings.FakeItem.cooldown)
@@ -435,7 +447,7 @@ function SLASHER.OnSecondaryFire(slasher)
 	spawnFakeItem(slasher)
 end
 
--- This is R
+-- R
 function SLASHER.OnMainAbilityFire(slasher)
 	if not slasher:GetNWBool("2011xCanCharge") then return end
 	slasher:SetNWFloat("2011xChargeCooldown", SLASHER.XSettings.Charge.cooldown + SLASHER.XSettings.Charge.cooldown)
@@ -453,7 +465,7 @@ function SLASHER.OnMainAbilityFire(slasher)
 	end)
 end
 
--- This is F
+-- F
 function SLASHER.OnSpecialAbilityFire(slasher)
 	if not slasher:GetNWBool("2011xCanTpToClone") then return end
 	slasher:SetNWFloat("2011xTpToCloneCooldown", SLASHER.XSettings.TpToClone.cooldown)
@@ -482,10 +494,12 @@ function SLASHER.OnSpecialAbilityFire(slasher)
 
 end
 
+-- Function used for when the slasher should be in third person (the return is the state, so if you return true they're in thirdperson)
 function SLASHER.Thirdperson(ply)
 	return ply:GetNWBool("2011xStunned") or ply:GetNWBool("2011xCharging")
 end
 
+-- Animator function, will be finished when animations are done
 function SLASHER.Animator(ply)
 	ply.CalcIdeal = ACT_MP_STAND_IDLE
 	ply.CalcSeqOverride = -1
@@ -498,11 +512,13 @@ function SLASHER.Animator(ply)
 	return ply.CalcIdeal, ply.CalcSeqOverride
 end
 
+-- The footsteps, will be finished eventually lmfao
 function SLASHER.Footstep(ply)
 	return true
 end
 
-function SLASHER.OnHitByPocketSand(slasher, ply, rage, stunTime)
+-- The stun function basically, added stuntime variable
+function SLASHER.OnHitByPocketSand(slasher, ply, stunTime)
 	slasher:SetNWBool("2011xStunned", true)
 	slasher:Freeze(true)
 
@@ -521,6 +537,7 @@ end
 SLASHER.OnHitByBeerKeg = function(slasher) SLASHER.OnHitByPocketSand(slasher, nil) end
 SLASHER.OnHitByTeslaCoil = function(slasher) SLASHER.OnHitByPocketSand(slasher, nil) end
 
+-- Hud function, this is where you do cool UI shit
 function SLASHER.InitHud(_, hud)
 	hud:SetTitle(SLASHER.Name)
 	hud:SetCrosshairEnabled(true)
@@ -541,6 +558,7 @@ function SLASHER.InitHud(_, hud)
 
 	-- Control Stuff
 	-- This was made to make creating the controls and editing them easier for the cooldown system
+	-- Do NOT make this a hash table, otherwise you won't be able to control the order in the hud
 	handleCooldowns = {
 		{ key = "R", 	 		controlName = "X_charge", 		netVarCD = "2011xChargeCooldown", 		netVarTie = "2011xCanCharge", 		preventOverwrite = false},
 		{ key = "F", 	 		controlName = "X_teleport",	netVarCD = "2011xTpToCloneCooldown", 	netVarTie = "2011xCanTpToClone", 	preventOverwrite = false},
@@ -548,6 +566,7 @@ function SLASHER.InitHud(_, hud)
 		{ key = "RMB", 	 		controlName = "X_fakeItem", 	netVarCD = "2011xFakeItemCooldown", 	netVarTie = "2011xCanFakeItem", 	preventOverwrite = false},
 		{ key = "LMB", 	 		controlName = "kill survivor", netVarCD = "2011xLMBCooldown", 			netVarTie = "2011xCanLMB", 			preventOverwrite = false},
 	}
+
 	for _, control in pairs(handleCooldowns) do
 		hud:AddControl(control.key, "")
 		hud:TieControl(control.key, control.netVarTie, false, true, nil)
@@ -555,6 +574,7 @@ function SLASHER.InitHud(_, hud)
 
 	local slasher = GameData.LocalPlayer
 
+	-- This is mainly used to update the hude for the cooldowns
 	function hud.AlsoThink()
 		local globalCooldown = slasher:GetNWFloat("2011xGlobalCooldown", 0)
 
@@ -584,8 +604,9 @@ function SLASHER.InitHud(_, hud)
 	end
 end
 
+-- Draws halos around the specific items, its cool
 function SLASHER.PreDrawHalos()
-	SlashCo.DrawHalo(ents.FindByClass("sc_x_clone"), color_red, nil, true)
+	SlashCo.DrawHalo(ents.FindByClass("sc_x_clone"), Color(0,255,170), nil, true)
 	SlashCo.DrawHalo(ents.FindByClass("sc_x_fakeitem"), color_red, nil, true)
 end
 
@@ -627,7 +648,7 @@ if SERVER then
 			cmd:ClearMovement()
 		end
 	end )
-
+	hook.Remove("SlashCo:OnPing", "2011xPingStuff")
 	hook.Add("SlashCo:OnPing", "2011xPingStuff", function(pingInfo)
 		if not pingInfo.Player then return end -- it can be nil!
 
@@ -640,28 +661,37 @@ if SERVER then
 		-- This section of code is to properly detect when you ping a slasher, as for some fucking reason it wouldn't put the entity in pinginfo.Entity
 		local traced = ply:GetEyeTrace().Entity
 
+		-- Had to do this cause if you ping a player it wouldn't return the entity, and so I couldn't get a slasher's name
 		if traced.IsPlayer() and ply:Team() == TEAM_SLASHER and traced:Team() == TEAM_SLASHER then
-			local pingedSlasherName = traced:GetNWString("Slasher")
-			pingInfo.Type = pingedSlasherName
-			sayPrompt(ply, SLASHER.XSettings.specialInteractions[pingedSlasherName])
-			return false
+			pingInfo.Type = traced:GetNWString("Slasher")
 		end
+
 		-- This section of code is to properly detect when you ping a slasher, as for some fucking reason it wouldn't put the entity in pinginfo.Entity
 
-
 		-- Normal Ping stuff
-		if not IsValid(entity) or not IsValid(ply) then return end
+		if not IsValid(ply) then return end
 
-		if entity:GetClass() == "sc_x_fakeitem" then
+		if IsValid(entity) and entity:GetClass() == "sc_x_fakeitem" then
+			-- If a survivor pings the fake item, we make them say the line and return
 			if pingInfo.Team == TEAM_SURVIVOR then
 				sayPrompt(ply, GetVoiceByPingType(pingInfo.Type))
-				return false
+				return true
+
+			-- If 2011x pings a fake item and it can blow up, we blow it up (we don't care if its another 20xx's fake item, they're shared)
 			elseif pingInfo.Team == TEAM_SLASHER and ply:GetNWBool("2011xCanDetonate") then
 				entity:Explode()
-				ply:SetNWFloat("2011xDetonateCooldown", SLASHER.XSettings.Detonate.cooldown)
-				ply:SetNWFloat("2011xGlobalCooldown", SLASHER.XSettings.Detonate.globalCooldown)
-				return true
+				ply:SetNWFloat("2011xDetonateCooldown", SLASHER.XSettings.FakeItem.Detonate.cooldown)
+				ply:SetNWFloat("2011xGlobalCooldown", SLASHER.XSettings.FakeItem.Detonate.globalCooldown)
 			end
+		end
+
+		-- Used at the end just in case
+		local pingVoiceLine = SLASHER.XSettings.specialInteractions[string.lower(pingInfo.Type)]
+		if pingVoiceLine then
+			if type(pingVoiceLine) == "table" then
+				pingVoiceLine = pingVoiceLine[math.random(1, #pingVoiceLine)]
+			end
+			sayPrompt(ply, pingVoiceLine)
 		end
 
 		return false
