@@ -606,8 +606,8 @@ end
 
 -- Draws halos around the specific items, its cool
 function SLASHER.PreDrawHalos()
-	SlashCo.DrawHalo(ents.FindByClass("sc_x_clone"), Color(0,255,170), nil, true)
-	SlashCo.DrawHalo(ents.FindByClass("sc_x_fakeitem"), color_red, nil, true)
+	SlashCo.DrawHalo(ents.FindByClass("sc_x_clone"), nil, nil, true)
+	SlashCo.DrawHalo(ents.FindByClass("sc_x_fakeitem"), nil, nil, true)
 end
 
 -- For client hooks
