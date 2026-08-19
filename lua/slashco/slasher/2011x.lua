@@ -51,6 +51,8 @@ SLASHER.XSettings = {
 	chaseColor = Color(0, 50, 255),
 
 	-- Uses pingInfo.Type and a Slasher's name (both in lowercase) and associates it to a voiceline for 2011x
+	-- You can use a table for randomized lines or jsut a string if you only want one played
+	-- You cannot target specific entity classes with this unfortunately and I have no use for it
 	specialInteractions = {
 		["survivor"] = { "pieceofshit", "fuckyou" },
 		["generator"] = "pieceofshit",
@@ -167,20 +169,9 @@ local function GetVoiceByPingType(pingtype)
 end
 
 -- Used to end the charge properly
-function endCharge(slasher, victim, doStun, stunTime)
+function endCharge(slasher, doStun, stunTime)
 	slasher:SetFriction(1)
 	slasher:SetNWBool("2011xCharging", false)
-
-	if (victim ~= nil and IsValid(victim)) then
-		local dmg = DamageInfo()
-		dmg:SetDamageType(DMG_SLASH)
-		dmg:SetAttacker(slasher)
-		dmg:SetInflictor(slasher)
-		dmg:SetDamage(SLASHER.XSettings.Charge.baseDamage)
-		dmg:SetDamageForce(Vector(50,50,50))
-		dmg:SetDamagePosition(slasher:GetPos())
-		victim:TakeDamageInfo(dmg)
-	end
 
 	if (doStun) then SLASHER.OnHitByPocketSand(slasher, nil, stunTime) end
 end
@@ -233,25 +224,33 @@ function spawnTpClone(pos, ang)
 	clone:SetVar("clDuration", SLASHER.XSettings.Clones.duration)
 end
 
--- Stock SlashCo Functions
+function damagePlayer(slasher, victim, damage, damageForce)
+	if victim:IsValid() and victim:IsPlayer() then
 
---[[ 
-Will be done later
+		-- If the victim is one hit, we jumpscare them instead (need to add jumps)
+		if victim:Health() <= SLASHER.XSettings.LMB.damage then
+			SlashCo.Jumpscare(slasher, victim)
+			return
+		end
 
-function SLASHER.OnBalanceForPlayers(totalSurvivors, additionalSurvivors)
-	local SO = SlashCo.CurRound.OfferingData.Singularity
+		local effect = EffectData()
+		local dmg = DamageInfo()
 
-	-- For every 5 additional or missing survivors we increase/decrease by 1 second.
-	SLASHER.CooldownReduction = math.max((SO * 4) + (0.2 * additionalSurvivors), 0) -- math.max so we don't go below 0
+		dmg:SetDamageType(DMG_SLASH)
+		dmg:SetAttacker(slasher)
+		dmg:SetInflictor(slasher)
+		dmg:SetDamage(damage)
+		victim:TakeDamageInfo(dmg)
 
-	if additionalSurvivors > 0 then
-		SLASHER.ProwlSpeed = 200 + (3 * additionalSurvivors)
-		SLASHER.ChaseSpeed = 325 + (0.5 * additionalSurvivors)
-		SLASHER.KillDistance = 150 + (2 * additionalSurvivors)
+		-- We do this cause set damage force doesn't work for some reason
+		victim:SetVelocity(slasher:GetAimVector() * damageForce)
+
+		effect:SetOrigin(victim:GetPos() + Vector(0,0,40))
+		util.Effect("BloodImpact", effect)
 	end
 end
- ]]
 
+-- Stock SlashCo Functions
 -- When the slasher first spawns in
 
 function SLASHER.OnSpawn(slasher)
@@ -290,8 +289,10 @@ end
 -- This happens on every tick, lord have mercy this shit sucks
 -- Sorry to whoever wants to take a look into this
 function SLASHER.OnTickBehaviour(slasher)
+
 	local final_eyesight = SLASHER.Eyesight
 	local final_perception = SLASHER.Perception
+
 	slasher:LagCompensation(true)
 	-- This is used to detect when the slasher is looking at a clone to teleport to it
 	local traceClone = util.TraceLine(
@@ -328,17 +329,6 @@ function SLASHER.OnTickBehaviour(slasher)
 	if (slasher:GetNWFloat("2011xDetonateCooldown") > 0) then slasher:SetNWFloat("2011xDetonateCooldown", slasher:GetNWFloat("2011xDetonateCooldown") - FrameTime()) end
 	if (slasher:GetNWFloat("2011xGlobalCooldown") > 0) then slasher:SetNWFloat("2011xGlobalCooldown", slasher:GetNWFloat("2011xGlobalCooldown") - FrameTime()) end
 
-
-	-- Used to debug stuff if needed, can be removed
---[[ 	slasher:PrintMessage(HUD_PRINTCENTER,
-		"2011xLMBCooldown: " .. tostring(slasher:GetNWFloat("2011xLMBCooldown")) .. "\n" ..
-		"2011xFakeItemCooldown: " .. tostring(slasher:GetNWFloat("2011xFakeItemCooldown")) .. "\n" ..
-		"2011xChargeCooldown: " .. tostring(slasher:GetNWFloat("2011xChargeCooldown")) .. "\n" ..
-		"2011xTpToCloneCooldown: " .. tostring(slasher:GetNWFloat("2011xTpToCloneCooldown")) .. "\n" ..
-		"2011xDetonateCooldown: " .. tostring(slasher:GetNWFloat("2011xDetonateCooldown")) .. "\n" ..
-		"2011xGlobalCooldown: " .. tostring(slasher:GetNWFloat("2011xGlobalCooldown"))
-	) ]]
-
 	-- Global conditional for if you can use each ability or not, 
 	-- this is a fuck fest and i have no clue how to potentially optimize this while keeping how it looks
 
@@ -360,12 +350,28 @@ function SLASHER.OnTickBehaviour(slasher)
 	if slasher:GetNWBool("2011xCharging") then
 		slasher:SetVelocity(slasher:GetAimVector() * SLASHER.XSettings.Charge.speed)
 
+		-- Hit detection, it's ass but it'll do, might switch to find players in sphere later
+		local entities = ents.FindInSphere(slasher:GetPos() + slasher:GetUp() * 20, 50)
+		for _, ent in pairs(entities) do
+			if IsValid(ent) and ent:IsPlayer() and ent:Team() == TEAM_SURVIVOR then
+				endCharge(slasher, false, nil)
+
+				local finalDamage = SLASHER.XSettings.Charge.baseDamage
+
+				if SLASHER.XSettings.Charge.damageBasedOnDuration then
+					finalDamage = finalDamage * ((SLASHER.XSettings.Charge.duration - timer.TimeLeft("2011xCharge_" .. slasher:UserID())) / SLASHER.XSettings.Charge.duration)
+				end
+				timer.Stop("2011xCharge_" .. slasher:UserID())
+				damagePlayer(slasher, ent, finalDamage, 200)
+			end
+		end
+
 		-- The charge crash logic, it's ass, this shit needs to be changed asap to depends on normals
 		if (SLASHER.XSettings.Charge.crashLogic) then
 			local curVel = slasher:GetVelocity():Length()
 			if (curVel > SLASHER.XSettings.Charge.crashActivateThreshold) then slasher.canCrash = true end
 
-			if (curVel < SLASHER.XSettings.Charge.crashThreshold and slasher.canCrash) then endCharge(slasher, nil, true) end
+			if (curVel < SLASHER.XSettings.Charge.crashThreshold and slasher.canCrash) then endCharge(slasher, true) end
 		end
 	end
 
@@ -408,34 +414,8 @@ function SLASHER.OnPrimaryFire(slasher)
 	slasher:LagCompensation(false)
 
 	local target = tr.Entity
-
 	if target:IsValid() and target:Team() == TEAM_SURVIVOR then
-		if target:Health() <= SLASHER.XSettings.LMB.damage then
-			SlashCo.Jumpscare(slasher, target)
-			slasher:Freeze(true)
-
-			timer.Simple(SLASHER.JumpscareDuration / 2, function()
-				slasher:Freeze(false)
-				target:Kill()
-			end)
-
-			return
-		end
-
-		local effect = EffectData()
-		local dmg = DamageInfo()
-
-		dmg:SetDamageType(DMG_SLASH)
-		dmg:SetAttacker(slasher)
-		dmg:SetInflictor(slasher)
-		dmg:SetDamage(SLASHER.XSettings.LMB.damage)
-		target:TakeDamageInfo(dmg)
-
-		-- We do this cause set damage force doesn't work for some reason
-		target:SetVelocity(slasher:GetAimVector() * 200)
-
-		effect:SetOrigin(target:GetPos() + Vector(0,0,40))
-		util.Effect("BloodImpact", effect)
+		damagePlayer(slasher, target, SLASHER.XSettings.LMB.damage, 200)
 	end
 end
 
@@ -460,8 +440,8 @@ function SLASHER.OnMainAbilityFire(slasher)
 	slasher:SetNWBool("2011xCharging", true)
 	slasher:SetVelocity(-(slasher:GetVelocity()))
 
-	timer.Simple(SLASHER.XSettings.Charge.duration, function()
-		endCharge(slasher, nil, false)
+	timer.Create("2011xCharge_" .. slasher:UserID(), SLASHER.XSettings.Charge.duration, 1, function()
+		endCharge(slasher, false)
 	end)
 end
 
@@ -476,7 +456,7 @@ function SLASHER.OnSpecialAbilityFire(slasher)
 			start = slasher:EyePos(),
 			endpos = slasher:EyePos() + slasher:GetAimVector() * SLASHER.XSettings.TpToClone.tpRange,
 			ignoreworld = true,
-			filter = {"sc_x_clone"},
+			filter = { "sc_x_clone" },
 			whitelist = true
 		}
 	)
@@ -491,17 +471,28 @@ function SLASHER.OnSpecialAbilityFire(slasher)
 		trace.Entity:SetPos(tempPos)
 		trace.Entity:SetAngles(tempAngle)
 	end
-
 end
 
--- Function used for when the slasher should be in third person (the return is the state, so if you return true they're in thirdperson)
-function SLASHER.Thirdperson(ply)
-	return ply:GetNWBool("2011xStunned") or ply:GetNWBool("2011xCharging")
+--[[ 
+Will be done later
+
+function SLASHER.OnBalanceForPlayers(totalSurvivors, additionalSurvivors)
+	local SO = SlashCo.CurRound.OfferingData.Singularity
+
+	-- For every 5 additional or missing survivors we increase/decrease by 1 second.
+	SLASHER.CooldownReduction = math.max((SO * 4) + (0.2 * additionalSurvivors), 0) -- math.max so we don't go below 0
+
+	if additionalSurvivors > 0 then
+		SLASHER.ProwlSpeed = 200 + (3 * additionalSurvivors)
+		SLASHER.ChaseSpeed = 325 + (0.5 * additionalSurvivors)
+		SLASHER.KillDistance = 150 + (2 * additionalSurvivors)
+	end
 end
+ ]]
 
 -- Animator function, will be finished when animations are done
 function SLASHER.Animator(ply)
-	ply.CalcIdeal = ACT_MP_STAND_IDLE
+	ply.CalcIdeal = ACT_IDLE
 	ply.CalcSeqOverride = -1
 
 	ply:SetPoseParameter("body_pitch", -ply:EyeAngles().pitch)
@@ -510,6 +501,11 @@ function SLASHER.Animator(ply)
 	ply:SetPoseParameter("body_yaw", -(math.AngleDifference(ply:EyeAngles().y, select(2, ply:GetBonePosition(0)).y) + 90))
 
 	return ply.CalcIdeal, ply.CalcSeqOverride
+end
+
+-- Function used for when the slasher should be in third person (the return is the state, so if you return true they're in thirdperson)
+function SLASHER.Thirdperson(ply)
+	return ply:GetNWBool("2011xStunned") or ply:GetNWBool("2011xCharging")
 end
 
 -- The footsteps, will be finished eventually lmfao
@@ -574,33 +570,28 @@ function SLASHER.InitHud(_, hud)
 
 	local slasher = GameData.LocalPlayer
 
-	-- This is mainly used to update the hude for the cooldowns
+	-- This is mainly used to update the hud for the cooldowns
+
 	function hud.AlsoThink()
+		local detonateText = "X_detonate"
 		local globalCooldown = slasher:GetNWFloat("2011xGlobalCooldown", 0)
+		local fakeItemSelection = slasher:GetNWInt("2011xCurFakeItemSelection", 1)
 
-		local curFakeItemSelection = slasher:GetNWInt("2011xCurFakeItemSelection", 1)
-		if (slasher:GetNWBool("2011xLookingAtFakeItem")) then
-			hud:SetControlText("MOUSEWHEEL", "detonate", true)
-		else
-			hud:SetControlText("MOUSEWHEEL", tostring(SLASHER.XSettings.FakeItem.spawnList[curFakeItemSelection].pingtype), true)
+		if not slasher:GetNWBool("2011xLookingAtFakeItem") then
+			detonateText = tostring(SLASHER.XSettings.FakeItem.spawnList[fakeItemSelection].pingtype)
 		end
 
-		for _, control in pairs(handleCooldowns) do
-			-- If it has a cooldown, we show it
-			local highestCooldown = math.max(slasher:GetNWFloat(control.netVarCD, 0), globalCooldown)
-			if highestCooldown > 0 then
-				hud:SetControlText(
-					control.key,
-					string.format("[ %s ] %s", math.Round(highestCooldown, 1), SlashCo.LangTable[control.controlName])
-				)
-			elseif (not control.preventOverwrite) then
-				hud:SetControlText(
-					control.key,
-					control.controlName
-				)
-			end
-		end
+		for _, control in ipairs(handleCooldowns) do
+			local cooldown = math.max(slasher:GetNWFloat(control.netVarCD, 0), globalCooldown)
 
+			local controlName = control.controlName
+			if control.preventOverwrite then controlName = detonateText end
+
+			local text = SlashCo.LangTable[controlName]
+			if cooldown > 0 then text = string.format( "[ %.1f ] %s", cooldown, text ) end
+
+			hud:SetControlText(control.key, text)
+		end
 	end
 end
 
@@ -648,7 +639,6 @@ if SERVER then
 			cmd:ClearMovement()
 		end
 	end )
-	hook.Remove("SlashCo:OnPing", "2011xPingStuff")
 	hook.Add("SlashCo:OnPing", "2011xPingStuff", function(pingInfo)
 		if not pingInfo.Player then return end -- it can be nil!
 
@@ -665,8 +655,6 @@ if SERVER then
 		if traced.IsPlayer() and ply:Team() == TEAM_SLASHER and traced:Team() == TEAM_SLASHER then
 			pingInfo.Type = traced:GetNWString("Slasher")
 		end
-
-		-- This section of code is to properly detect when you ping a slasher, as for some fucking reason it wouldn't put the entity in pinginfo.Entity
 
 		-- Normal Ping stuff
 		if not IsValid(ply) then return end
