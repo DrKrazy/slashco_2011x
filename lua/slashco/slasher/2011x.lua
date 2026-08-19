@@ -250,7 +250,6 @@ function SLASHER.OnSpawn(slasher)
 
 	-- Please dont touch anything between these two comments
 	slasher:SetNWBool("2011xStunned", false)
-	slasher:SetNWBool("ChaseLight", false) -- To disable chase light
 
 	slasher:SetNWFloat("2011xLMBCooldown", 0)
 	slasher:SetNWFloat("2011xFakeItemCooldown", 0)
@@ -303,7 +302,7 @@ function SLASHER.OnTickBehaviour(slasher)
 		traceMisc.Entity:Team() == TEAM_SURVIVOR and
 		((traceMisc.HitPos - traceMisc.StartPos):Length()) < SLASHER.ChaseRange) and
 		not slasher:GetNWBool("InSlasherChaseMode")
-		
+
 	then
 		SlashCo.StartChaseMode(slasher, true)
 	end
