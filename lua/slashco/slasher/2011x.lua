@@ -227,6 +227,7 @@ end
 function damagePlayer(slasher, victim, damage, damageForce)
 	if victim:IsValid() and victim:IsPlayer() then
 		-- If the victim is one hit, we jumpscare them instead (need to add jumps)
+		-- Have to make my own jumpscare logic cause stock one wouldn't work
 		if victim:Health() <= SLASHER.XSettings.LMB.damage then
 			slasher:Freeze(true)
 
@@ -264,7 +265,7 @@ end
 -- When the slasher first spawns in
 
 function SLASHER.OnSpawn(slasher)
-	slasher:SetViewOffset(Vector(0,0, 50))
+	slasher:SetViewOffset(Vector(0, 0, 50))
 
 	slasher:SetNWBool("CanChase", false)
 	slasher:SetNWBool("DisableChaseLight", true)
@@ -515,12 +516,12 @@ end
 -- Animator function, will be finished when animations are done
 function SLASHER.Animator(ply)
 	ply.CalcIdeal = ACT_IDLE
-	ply.CalcSeqOverride = -1
+	ply.CalcSeqOverride = ply:LookupSequence("idle")
 
-	ply:SetPoseParameter("body_pitch", -ply:EyeAngles().pitch)
+	--ply:SetPoseParameter("body_pitch", -ply:EyeAngles().pitch)
 
 	-- This fucking bullshit took me way too long to figure out, i fucking HATE math, please use it
-	ply:SetPoseParameter("body_yaw", -(math.AngleDifference(ply:EyeAngles().y, select(2, ply:GetBonePosition(0)).y) + 90))
+	--ply:SetPoseParameter("body_yaw", -(math.AngleDifference(ply:EyeAngles().y, select(2, ply:GetBonePosition(0)).y) + 90))
 
 	return ply.CalcIdeal, ply.CalcSeqOverride
 end

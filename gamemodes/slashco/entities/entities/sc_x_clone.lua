@@ -5,6 +5,7 @@ ENT.Base = "base_nextbot"
 ENT.Type = "nextbot"
 ENT.PrintName = "2011x"
 ENT.PingType = "SLASHER"
+ENT.AutomaticFrameAdvance = true
 
 -- Server only stuff
 local model = "models/slashco/slashers/2011x/2011x.mdl"
@@ -39,10 +40,10 @@ if SERVER then
 
 		-- I have no idea how to not make this suck absolute balls, sorry to whoever wants to make this better
 		for _, ply in ipairs(team.GetPlayers(TEAM_SURVIVOR)) do
-			if ply:GetEyeTrace().Entity ~= self then return end
-			if not IsValid(ply) or not ply:Alive() then return end
-			if ply:GetPos():DistToSqr(self:GetPos()) > self.flRange * self.flRange then return end
-			if not ply:GetNW2Bool("DynamicFlashlight") then return end
+			if ply:GetEyeTrace().Entity ~= self then continue end
+			if not IsValid(ply) or not ply:Alive() then continue end
+			if ply:GetPos():DistToSqr(self:GetPos()) > self.flRange * self.flRange then continue end
+			if not ply:GetNW2Bool("DynamicFlashlight") then continue end
 
 			self.flTicks = self.flTicks - FrameTime()
 		end
@@ -56,7 +57,13 @@ if SERVER then
 
 	-- This is done to prevent warnings and shit in the console due to this entity being a next bot
 	-- Will be used in the future tho 
-	function ENT:BehaveStart()
+	function ENT:RunBehaviour()
+		while true do
+			self:StartActivity(ACT_IDLE)
+			self:PlaySequenceAndWait("idle")
+
+			coroutine.yield()
+		end
 	end
 end
 

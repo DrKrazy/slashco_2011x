@@ -1,0 +1,5 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models/slashco/slashers/2011x/body_d"
+	"$bumpmap" "models/slashco/slashers/2011x/body_n"
+}
