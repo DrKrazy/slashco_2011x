@@ -30,10 +30,10 @@ SLASHER.KillDelay = 2
 SLASHER.ProwlSpeed = 310
 SLASHER.ChaseSpeed = 310
 SLASHER.Perception = 1.0
-SLASHER.Eyesight = 6
+SLASHER.Eyesight = 3
 SLASHER.KillDistance = 70
 
-SLASHER.JumpscareDuration = 2
+SLASHER.JumpscareDuration = 1
 SLASHER.ChaseMusic = "slashco/slasher/2011x/2011x_tempChase.ogg"
 SLASHER.ChaseRange = 300
 SLASHER.ChaseRadius = 0.1
@@ -48,7 +48,7 @@ SLASHER.StunTime = 8
 
 -- 2011X Specific Parameters (sorry to whoever wants to balance this fucking slasher lmfao)
 SLASHER.XSettings = {
-	chaseColor = Color(0, 50, 255),
+	chaseColor = Color(38, 0, 255),
 
 	-- Uses pingInfo.Type and a Slasher's name (both in lowercase) and associates it to a voiceline for 2011x
 	-- You can use a table for randomized lines or jsut a string if you only want one played
@@ -231,9 +231,9 @@ function damagePlayer(slasher, victim, damage, damageForce)
 		if victim:Health() <= SLASHER.XSettings.LMB.damage then
 			slasher:Freeze(true)
 
-			timer.Simple(SLASHER.JumpscareDuration / 2, function()
+			timer.Simple(SLASHER.JumpscareDuration, function()
 				if IsValid(slasher) and slasher:IsPlayer() then
-					victim:TakeDamage(victim:Health() + 10, slasher, slasher)
+					victim:TakeDamage(victim:Health() * 2, slasher, slasher)
 				else
 					victim:Kill()
 				end
@@ -300,11 +300,9 @@ end
 -- This happens on every tick, lord have mercy this shit sucks
 -- Sorry to whoever wants to take a look into this
 function SLASHER.OnTickBehaviour(slasher)
-
 	local final_eyesight = SLASHER.Eyesight
 	local final_perception = SLASHER.Perception
 
-	slasher:LagCompensation(true)
 	-- This is used to detect when the slasher is looking at a clone to teleport to it
 	local traceClone = util.TraceLine(
 		{
@@ -318,7 +316,6 @@ function SLASHER.OnTickBehaviour(slasher)
 
 	-- Used for the MOUSE WHEEL text change to "Detonate" for fake items
 	local traceMisc = slasher:GetEyeTrace()
-	slasher:LagCompensation(false)
 
 	-- Custom start chase logic
 	-- Unironically very ass, will improve later
@@ -484,18 +481,6 @@ function SLASHER.OnSpecialAbilityFire(slasher)
 	end
 end
 
--- This will be used to highlight players close enough to a clone, thank you very much Xerk
-function SLASHER.PreDrawHalos()
-	local plyMarked = {}
-	for _, survivor in ipairs(team.GetPlayers(TEAM_SURVIVOR)) do
-		if survivor:GetNWBool("GetMarked") then
-			table.insert(plyMarked, survivor)
-		end
-	end
-
-	SlashCo.DrawHalo(plyMarked, "blue", 2, true)
-end
-
 --[[ 
 Will be done later
 
@@ -618,9 +603,19 @@ function SLASHER.InitHud(_, hud)
 	end
 end
 
--- Draws halos around the specific items, its cool
-function SLASHER.PreDrawHalos()
-	SlashCo.DrawHalo(ents.FindByClass("sc_x_*"), Color(0,89,255), nil, true)
+-- This will be used to highlight players close enough to a clone, thank you very much Xerk
+function SLASHER.PreDrawHalos(slasher)
+	local plyMarked = {}
+
+	for _, clone in pairs(ents.FindByClass("sc_x_clone")) do
+		for _, survivor in ipairs(ents.FindInSphere(clone:GetPos(), SLASHER.XSettings.Clones.detectionRange)) do
+			if not IsValid(survivor) or not survivor:IsPlayer() or survivor:Team() ~= TEAM_SURVIVOR then continue end
+			table.insert(plyMarked, survivor)
+		end
+	end
+
+	SlashCo.DrawHalo(plyMarked, "blue", 2, true)
+	SlashCo.DrawHalo(ents.FindByClass("sc_x_*"), Color(255,0,255), nil, true)
 end
 
 -- For client hooks
@@ -636,18 +631,19 @@ if CLIENT then
 				dlight.r = SLASHER.XSettings.chaseColor.r
 				dlight.g = SLASHER.XSettings.chaseColor.g
 				dlight.b = SLASHER.XSettings.chaseColor.b
-				dlight.brightness = 4
+				dlight.brightness = 6
+				dlight.Size = 300
 
-				local size = 250
-				dlight.Decay = size * 8
-				dlight.Size = size
-				dlight.DieTime = CurTime() + 1
+				local fadeOut = 600
+				dlight.Decay = 600 / 10
+				dlight.DieTime = CurTime() + fadeOut
 			end
 		end
 	end)
 end
 
 -- For server hooks
+
 if SERVER then
 	hook.Add( "StartCommand", "MouseWheel", function( ply, cmd )
 		if ply:Team() ~= TEAM_SLASHER or ply:GetNWString("Slasher") ~= "2011x" then return end

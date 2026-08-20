@@ -69,7 +69,7 @@ end
 
 -- Client only stuff
 if CLIENT then
-	local chaseColor = Color(0, 50, 255)
+	local chaseColor = Color(38, 0, 255)
 
 	function ENT:Think()
 		local client = GameData.LocalPlayer
@@ -94,12 +94,11 @@ if CLIENT then
 			dlight.r = chaseColor.r
 			dlight.g = chaseColor.g
 			dlight.b = chaseColor.b
-			dlight.brightness = 4
+			dlight.brightness = 6
 
 			local size = 250
-			dlight.Decay = size * 8
 			dlight.Size = size
-			dlight.DieTime = CurTime() + 1
+			dlight.DieTime = CurTime()
 		end
 	end
 
