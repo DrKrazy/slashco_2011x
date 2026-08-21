@@ -322,6 +322,12 @@ function SLASHER.OnTickBehaviour(slasher)
 	-- Used for the MOUSE WHEEL text change to "Detonate" for fake items
 	local traceMisc = slasher:GetEyeTrace()
 
+	-- If 2011x is looking at a fake item (used for detonate)
+	slasher:SetNWBool("2011xLookingAtFakeItem",
+		traceMisc.Entity:IsValid()
+		and traceMisc.Entity:GetClass() == "sc_x_fakeitem"
+	)
+
 	-- Custom start chase logic
 	-- Unironically very ass, will improve later
 	if (IsValid(traceMisc.Entity) and
@@ -345,19 +351,41 @@ function SLASHER.OnTickBehaviour(slasher)
 	-- Global conditional for if you can use each ability or not, 
 	-- this is a fuck fest and i have no clue how to potentially optimize this while keeping how it looks
 
-	-- This conditional is giving me aids, im so sorry
-	slasher:SetNWBool("2011xCanLMB", not tobool(
-			slasher:GetNWFloat("2011xLMBCooldown") > 0
-			or slasher:GetNWFloat("2011xGlobalCooldown") > 0
-			or slasher:GetNWBool("2011xStunned")
-		)
-	)
-	slasher:SetNWBool("2011xCanFakeItem", not tobool(slasher:GetNWFloat("2011xFakeItemCooldown") > 0 or slasher:GetNWFloat("2011xGlobalCooldown") > 0 or slasher:GetNWBool("2011xStunned")) )
-	slasher:SetNWBool("2011xCanCharge", not tobool(slasher:GetNWFloat("2011xChargeCooldown") > 0 or slasher:GetNWFloat("2011xGlobalCooldown") > 0 or slasher:GetNWBool("2011xStunned")) )
-	slasher:SetNWBool("2011xCanTpToClone", not tobool(slasher:GetNWFloat("2011xTpToCloneCooldown") > 0 or slasher:GetNWFloat("2011xGlobalCooldown") > 0 or not (traceClone.Entity:IsValid() and traceClone.Entity:GetClass() == "sc_x_clone") or slasher:GetNWBool("2011xStunned")) )
-	slasher:SetNWBool("2011xCanDetonate", tobool(slasher:GetNWFloat("2011xDetonateCooldown") <= 0 and slasher:GetNWFloat("2011xGlobalCooldown") <= 0))
+	local globalCooldown = slasher:GetNWFloat("2011xGlobalCooldown") > 0
+	local stunned = slasher:GetNWBool("2011xStunned")
 
-	slasher:SetNWBool("2011xLookingAtFakeItem", tobool(traceMisc.Entity:IsValid() and traceMisc.Entity:GetClass() == "sc_x_fakeitem"))
+	-- This conditional is giving me aids, im so sorry
+	slasher:SetNWBool("2011xCanLMB",
+		slasher:GetNWFloat("2011xLMBCooldown") <= 0
+		and not globalCooldown
+		and not stunned
+	)
+
+	slasher:SetNWBool("2011xCanFakeItem",
+		slasher:GetNWFloat("2011xFakeItemCooldown") <= 0
+		and not globalCooldown
+		and not stunned
+	)
+
+	slasher:SetNWBool("2011xCanCharge",
+		slasher:GetNWFloat("2011xChargeCooldown") <= 0
+		and not globalCooldown
+		and not stunned
+	)
+
+	slasher:SetNWBool("2011xCanTpToClone",
+		slasher:GetNWFloat("2011xTpToCloneCooldown") <= 0
+		and not globalCooldown
+		and not stunned
+		and traceClone.Entity:IsValid()
+		and traceClone.Entity:GetClass() == "sc_x_clone"
+	)
+
+	slasher:SetNWBool("2011xCanDetonate",
+		slasher:GetNWFloat("2011xDetonateCooldown") <= 0
+		and not globalCooldown
+		and not stunned
+	)
 
 	-- Logic for the charge, i wanna die this code fucking sucks
 	if slasher:GetNWBool("2011xCharging") then
@@ -625,7 +653,7 @@ function SLASHER.InitHud(_, hud)
 			{ seperator = " : ", debugString = "2011xLookingAtFakeItem", value = slasher:GetNWBool("2011xLookingAtFakeItem", false)},
 		}
 		for i, debugText in ipairs(debugTable) do
-			DebugInfo(i, tostring(debugText.value) .. debugText.seperator .. debugText.debugString) 
+			DebugInfo(i, tostring(debugText.value) .. debugText.seperator .. debugText.debugString)
 		end
 	end
 	end
