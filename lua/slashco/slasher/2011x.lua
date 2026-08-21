@@ -391,20 +391,6 @@ function SLASHER.OnTickBehaviour(slasher)
 	-- :D
 	slasher:SetEyeSight(final_eyesight)
 	slasher:SetPerception(final_perception)
-
-	if SLASHER.XSettings.DEBUG then
-		local debugTable = {
-			slasher:GetNWFloat("2011xLMBCooldown"),
-			slasher:GetNWFloat("2011xFakeItemCooldown"),
-			slasher:GetNWFloat("2011xChargeCooldown"),
-			slasher:GetNWFloat("2011xTpToCloneCooldown"),
-			slasher:GetNWFloat("2011xDetonateCooldown"),
-			slasher:GetNWFloat("2011xGlobalCooldown"),
-		}
-		for i, debugText in ipairs(debugTable) do
-			DebugInfo(i, tostring(debugText))
-		end
-	end
 end
 
 -- Left click
@@ -619,6 +605,29 @@ function SLASHER.InitHud(_, hud)
 
 			hud:SetControlText(control.key, text)
 		end
+
+		if SLASHER.XSettings.DEBUG then
+		local debugTable = {
+			{ seperator = " :", debugString = "", value = "Cooldowns"},
+			{ seperator = " : ", debugString = "2011xLMBCooldown", value = math.Clamp(slasher:GetNWFloat("2011xLMBCooldown", 0), 0, math.huge)},
+			{ seperator = " : ", debugString = "2011xFakeItemCooldown", value = math.Clamp(slasher:GetNWFloat("2011xFakeItemCooldown", 0), 0, math.huge)},
+			{ seperator = " : ", debugString = "2011xChargeCooldown", value = math.Clamp(slasher:GetNWFloat("2011xChargeCooldown", 0), 0, math.huge)},
+			{ seperator = " : ", debugString = "2011xTpToCloneCooldown", value = math.Clamp(slasher:GetNWFloat("2011xTpToCloneCooldown", 0), 0, math.huge)},
+			{ seperator = " : ", debugString = "2011xDetonateCooldown", value = math.Clamp(slasher:GetNWFloat("2011xDetonateCooldown", 0), 0, math.huge)},
+			{ seperator = " : ", debugString = "2011xGlobalCooldown", value = math.Clamp(slasher:GetNWFloat("2011xGlobalCooldown", 0), 0, math.huge)},
+
+			{ seperator = "", debugString = "", value = ""},
+			{ seperator = " :", debugString = "", value = "Abilities"},
+			{ seperator = " : ", debugString = "2011xCanFakeItem", value = slasher:GetNWBool("2011xCanFakeItem", false)},
+			{ seperator = " : ", debugString = "2011xCanCharge", value = slasher:GetNWBool("2011xCanCharge", false)},
+			{ seperator = " : ", debugString = "2011xCanTpToClone", value = slasher:GetNWBool("2011xCanTpToClone", false)},
+			{ seperator = " : ", debugString = "2011xCanDetonate", value = slasher:GetNWBool("2011xCanDetonate", false)},
+			{ seperator = " : ", debugString = "2011xLookingAtFakeItem", value = slasher:GetNWBool("2011xLookingAtFakeItem", false)},
+		}
+		for i, debugText in ipairs(debugTable) do
+			DebugInfo(i, tostring(debugText.value) .. debugText.seperator .. debugText.debugString) 
+		end
+	end
 	end
 end
 
