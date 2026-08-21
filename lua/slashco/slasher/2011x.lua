@@ -44,7 +44,7 @@ SLASHER.ProTip = "X_tip"
 SLASHER.SpeedRating = "★★★★★"
 SLASHER.EyeRating = "★★★★★"
 SLASHER.DiffRating = "★★★☆☆"
-SLASHER.StunTime = 8
+SLASHER.StunTime = 1
 
 -- 2011X Specific Parameters (sorry to whoever wants to balance this fucking slasher lmfao)
 SLASHER.XSettings = {
@@ -124,13 +124,13 @@ SLASHER.XSettings = {
 	-- Charge ability, used for closing distance really fast or getting a kill if a survivor is out in the open
 	Charge = {
 		cooldown = 2,					-- Cooldown between this ability's uses
-		duration = 3,					-- Total duration of charge
+		duration = 8,					-- Total duration of charge
 		speed = 30,						-- Base speed
 		friction = 0.15,				-- Acceleration overtime that depends on speed
 		baseDamage = 40,				-- Base damage
-		damageBasedOnDuration = true,	-- Should the damage of the charge depends on it's current length
+		damageBasedOnDuration = false,	-- Should the damage of the charge depends on it's current length
 
-		crashLogic = true, 			-- Activate the crash logic (prevents people from pinballing around the map and getting auranteed hits)
+		crashLogic = false, 			-- Activate the crash logic (prevents people from pinballing around the map and getting auranteed hits)
 		crashActivateThreshold = 600,	-- At what velocity threshold the slasher CAN crash
 		crashThreshold = 400,			-- At what velocity ACTUALLY crashes if it goes below
 
@@ -400,9 +400,13 @@ function SLASHER.OnTickBehaviour(slasher)
 				local finalDamage = SLASHER.XSettings.Charge.baseDamage
 
 				if SLASHER.XSettings.Charge.damageBasedOnDuration then
-					finalDamage = finalDamage * ((SLASHER.XSettings.Charge.duration - timer.TimeLeft("2011xCharge_" .. slasher:UserID())) / SLASHER.XSettings.Charge.duration)
+					finalDamage = finalDamage * ((SLASHER.XSettings.Charge.duration - timer.TimeLeft("2011xCharge_" .. slasher:EntIndex())) / SLASHER.XSettings.Charge.duration)
 				end
-				timer.Stop("2011xCharge_" .. slasher:UserID())
+
+				if SLASHER.XSettings.DEBUG then
+					print("Charge damage: " .. finalDamage)
+				end
+				timer.Stop("2011xCharge_" .. slasher:EntIndex())
 				damagePlayer(slasher, ent, finalDamage, 200)
 			end
 		end
@@ -481,7 +485,7 @@ function SLASHER.OnMainAbilityFire(slasher)
 	slasher:SetNWBool("2011xCharging", true)
 	slasher:SetVelocity(-(slasher:GetVelocity()))
 
-	timer.Create("2011xCharge_" .. slasher:UserID(), SLASHER.XSettings.Charge.duration, 1, function()
+	timer.Create("2011xCharge_" .. slasher:EntIndex(), SLASHER.XSettings.Charge.duration, 1, function()
 		endCharge(slasher, false)
 	end)
 end
@@ -651,6 +655,10 @@ function SLASHER.InitHud(_, hud)
 			{ seperator = " : ", debugString = "2011xCanTpToClone", value = slasher:GetNWBool("2011xCanTpToClone", false)},
 			{ seperator = " : ", debugString = "2011xCanDetonate", value = slasher:GetNWBool("2011xCanDetonate", false)},
 			{ seperator = " : ", debugString = "2011xLookingAtFakeItem", value = slasher:GetNWBool("2011xLookingAtFakeItem", false)},
+
+			{ seperator = "", debugString = "", value = ""},
+			{ seperator = " :", debugString = "", value = "Player"},
+			{ seperator = " : ", debugString = "Velocity", value = math.Round(slasher:GetVelocity():Length())},
 		}
 		for i, debugText in ipairs(debugTable) do
 			DebugInfo(i, tostring(debugText.value) .. debugText.seperator .. debugText.debugString)
