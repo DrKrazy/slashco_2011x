@@ -23,6 +23,10 @@ if SERVER then
 		local expForce = self:GetVar("expForce")
 		local triggeredColor = self:GetVar("triggeredColor")
 		local slasherKnockback = self:GetVar("slasherKnockback")
+		local slowMinDuration = self:GetVar("slowMinDuration")
+		local slowMaxDuration = self:GetVar("slowMaxDuration")
+		local slowMinDistance = self:GetVar("slowMinDistance")
+		local slowMaxDistance = self:GetVar("slowMaxDistance")
 
 		-- PrintMessage(HUD_PRINTCENTER,
 		-- 	"expRange: " .. tostring(expRange) .. "\n" ..
@@ -43,6 +47,7 @@ if SERVER then
 				if ent:IsPlayer() and (ent:Team() == TEAM_SURVIVOR or slasherKnockback) then
 					ent:TakeDamage(expDamage, self, self)
 					ent:SetVelocity(-(pos - ent:GetPos()) * expForce)
+					ent:AddEffect("Slowness", math.Remap(self:GetPos():Distance(self:GetOwner():GetPos()), slowMinDistance, slowMaxDistance, slowMinDuration, slowMaxDuration))
 				end
 				if ent:GetClass() == self:GetClass() then
 					ent:Explode()

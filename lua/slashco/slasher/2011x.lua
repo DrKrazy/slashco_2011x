@@ -102,8 +102,16 @@ SLASHER.XSettings = {
 		expRange = 200,						-- Range of explosion
 		expDamage = 25,						-- Amount of damage it does when it explodes
 		expForce = 25,						-- Force of the explosion (used to apply velocity to players)
-
 		slasherKnockback = false, 			-- Force of the explosion will also apply to the slasher (rocket jumping)
+
+		slowness = {
+			minDuration = 1,
+			maxDuration = 8,
+
+			minDistance = 0,
+			maxDistance = 800
+		},
+
 
 		-- Sub ability of fake items, used when they're detonated via ping
 		Detonate = {
@@ -202,6 +210,10 @@ function spawnFakeItem(slasher)
 	fakeItem:SetVar("expForce", SLASHER.XSettings.FakeItem.expForce)
 	fakeItem:SetVar("maxNear", SLASHER.XSettings.FakeItem.maxNear)
 	fakeItem:SetVar("slasherKnockback", SLASHER.XSettings.FakeItem.slasherKnockback)
+	fakeItem:SetVar("slowMinDuration", SLASHER.XSettings.FakeItem.slowness.minDuration)
+	fakeItem:SetVar("slowMaxDuration", SLASHER.XSettings.FakeItem.slowness.maxDuration)
+	fakeItem:SetVar("slowMinDistance", SLASHER.XSettings.FakeItem.slowness.minDistance)
+	fakeItem:SetVar("slowMaxDistance", SLASHER.XSettings.FakeItem.slowness.maxDistance)
 
 	fakeItem:Spawn()
 	fakeItem:Activate()
