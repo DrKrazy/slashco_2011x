@@ -48,16 +48,21 @@ SLASHER.StunTime = 8
 
 -- 2011X Specific Parameters (sorry to whoever wants to balance this fucking slasher lmfao)
 SLASHER.XSettings = {
+	-- This is used for debugging purposes, please disable that for normal gameplay
+	DEBUG = true,
+
+	-- Normal settings
 	chaseColor = Color(38, 0, 255),
 
-	-- Uses pingInfo.Type and a Slasher's name (both in lowercase) and associates it to a voiceline for 2011x
-	-- You can use a table for randomized lines or jsut a string if you only want one played
-	-- You cannot target specific entity classes with this unfortunately and I have no use for it
+	-- Uses the entity class or a Slasher's name (both in lowercase) and associates it to a voiceline for 2011x
+	-- You can use a table for randomized lines or just a string if you only want one played
 	specialInteractions = {
+		["sc_generator"] = "pieceofshit",
+		["sc_battery"] = "fuckyou",
+		["sc_x_fakeitem"] = "fuckyou",
+
 		["survivor"] = { "pieceofshit", "fuckyou" },
-		["generator"] = "pieceofshit",
-		["item"] = "fuckyou",
-		["sid"] = "pieceofshit",
+		["2011x"] = "pieceofshit",
 		["postal dude"] = "fuckyou",
 	},
 
@@ -386,6 +391,20 @@ function SLASHER.OnTickBehaviour(slasher)
 	-- :D
 	slasher:SetEyeSight(final_eyesight)
 	slasher:SetPerception(final_perception)
+
+	if SLASHER.XSettings.DEBUG then
+		local debugTable = {
+			slasher:GetNWFloat("2011xLMBCooldown"),
+			slasher:GetNWFloat("2011xFakeItemCooldown"),
+			slasher:GetNWFloat("2011xChargeCooldown"),
+			slasher:GetNWFloat("2011xTpToCloneCooldown"),
+			slasher:GetNWFloat("2011xDetonateCooldown"),
+			slasher:GetNWFloat("2011xGlobalCooldown"),
+		}
+		for i, debugText in ipairs(debugTable) do
+			DebugInfo(i, tostring(debugText))
+		end
+	end
 end
 
 -- Left click
@@ -632,11 +651,10 @@ if CLIENT then
 				dlight.g = SLASHER.XSettings.chaseColor.g
 				dlight.b = SLASHER.XSettings.chaseColor.b
 				dlight.brightness = 6
-				dlight.Size = 300
 
-				local fadeOut = 600
-				dlight.Decay = 600 / 10
-				dlight.DieTime = CurTime() + fadeOut
+				dlight.Decay = 1000
+				dlight.Size = 300
+				dlight.DieTime = CurTime() + 1
 			end
 		end
 	end)
@@ -656,49 +674,61 @@ if SERVER then
 		if (ply:GetNWBool("2011xCharging")) then
 			cmd:ClearMovement()
 		end
-	end )
-	hook.Add("SlashCo:OnPing", "2011xPingStuff", function(pingInfo)
-		if not pingInfo.Player then return end -- it can be nil!
+	end)
 
-		local ply = pingInfo.Player
-		if isnumber(ply) then ply = Entity(ply) end
+	hook.Add("SlashCo:OnPing", "2011xPingStuff", function(pingInfo)
+		if not istable(pingInfo) then return end -- Should always be a table but just in case
+
+		local pingingPlayer = pingInfo.Player
+		if isnumber(pingingPlayer) then pingingPlayer = Entity(pingingPlayer) end
+		if not IsValid(pingingPlayer) or not pingingPlayer:IsPlayer() then return end
 
 		local entity = pingInfo.Entity
 		if isnumber(entity) then entity = Entity(entity) end
 
 		-- This section of code is to properly detect when you ping a slasher, as for some fucking reason it wouldn't put the entity in pinginfo.Entity
-		local traced = ply:GetEyeTrace().Entity
+		local traced = pingingPlayer:GetEyeTrace().Entity
 
 		-- Had to do this cause if you ping a player it wouldn't return the entity, and so I couldn't get a slasher's name
-		if traced.IsPlayer() and ply:Team() == TEAM_SLASHER and traced:Team() == TEAM_SLASHER then
-			pingInfo.Type = traced:GetNWString("Slasher")
+		if traced:IsPlayer() and pingingPlayer:Team() == TEAM_SLASHER and traced:Team() == TEAM_SLASHER then
+			pingInfo.Type = traced:GetNWString("Slasher", "")
 		end
 
-		-- Normal Ping stuff
-		if not IsValid(ply) then return end
-
+		-- Fake item stuff
 		if IsValid(entity) and entity:GetClass() == "sc_x_fakeitem" then
 			-- If a survivor pings the fake item, we make them say the line and return
-			if pingInfo.Team == TEAM_SURVIVOR then
-				sayPrompt(ply, GetVoiceByPingType(pingInfo.Type))
+			if pingingPlayer.Team == TEAM_SURVIVOR then
+				local voiceLine = GetVoiceByPingType(pingInfo.Type)
+
+				if voiceLine then
+					sayPrompt(pingingPlayer, voiceLine)
+				end
 				return true
+			end
 
 			-- If 2011x pings a fake item and it can blow up, we blow it up (we don't care if its another 20xx's fake item, they're shared)
-			elseif pingInfo.Team == TEAM_SLASHER and ply:GetNWBool("2011xCanDetonate") then
+			if pingInfo.Team == TEAM_SLASHER and pingingPlayer:GetNWBool("2011xCanDetonate", false) then
 				entity:Explode()
-				ply:SetNWFloat("2011xDetonateCooldown", SLASHER.XSettings.FakeItem.Detonate.cooldown)
-				ply:SetNWFloat("2011xGlobalCooldown", SLASHER.XSettings.FakeItem.Detonate.globalCooldown)
+				pingingPlayer:SetNWFloat("2011xDetonateCooldown", SLASHER.XSettings.FakeItem.Detonate.cooldown)
+				pingingPlayer:SetNWFloat("2011xGlobalCooldown", SLASHER.XSettings.FakeItem.Detonate.globalCooldown)
 			end
 		end
 
-		-- Used at the end just in case
-		local pingVoiceLine = SLASHER.XSettings.specialInteractions[string.lower(pingInfo.Type)]
-		if pingVoiceLine then
-			if type(pingVoiceLine) == "table" then
-				pingVoiceLine = pingVoiceLine[math.random(1, #pingVoiceLine)]
-			end
-			sayPrompt(ply, pingVoiceLine)
+		-- Used for 2011x special interactions
+		local returnTarget = pingInfo.Type
+		if IsValid(entity) then returnTarget = entity:GetClass() end
+
+		if SLASHER.XSettings.DEBUG then
+			print("Pinged: " .. returnTarget)
 		end
+
+		local pingVoiceLine = SLASHER.XSettings.specialInteractions[string.lower(returnTarget)]
+		if not pingVoiceLine then return end	-- If there's no voiceline at all then we return
+
+		if istable(pingVoiceLine) then
+			pingVoiceLine = pingVoiceLine[math.random(#pingVoiceLine)]
+		end
+		sayPrompt(pingingPlayer, pingVoiceLine)
 
 		return false
 	end)
