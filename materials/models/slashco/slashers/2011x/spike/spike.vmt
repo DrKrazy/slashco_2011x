@@ -1,0 +1,16 @@
+"VertexLitGeneric"
+{
+    $basetexture "models/slashco/slashers/2011x/spike/spike_d"
+    $bumpmap "models/slashco/slashers/2011x/spike/spike_n"
+    $ambientocclusion 1
+
+    $phong "1"
+    $phongfresnelranges "[0.02 0.5 1]"
+    $phongalbedotint 1
+    $phongboost 10
+    $phongexponent 20
+
+    $rimlight 1
+    $rimlightexponent 2
+    $rimlightboost .5
+}

@@ -254,6 +254,12 @@ function damagePlayer(slasher, victim, damage, damageForce)
 				else
 					victim:Kill()
 				end
+
+				local ragdoll = victim.DeadBody
+
+				ragdoll:Fire("Ignite", "", 0)
+				ragdoll:SetModel("models/player/corpse1.mdl")
+
 				slasher:Freeze(false)
 			end)
 			return true

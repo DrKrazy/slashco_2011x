@@ -1,5 +1,11 @@
 "VertexLitGeneric"
 {
-	"$basetexture" "models/slashco/slashers/2011x/body_d"
-	"$bumpmap" "models/slashco/slashers/2011x/body_n"
+	$basetexture "models/slashco/slashers/2011x/body_d"
+	$bumpmap "models/slashco/slashers/2011x/body_n"
+    $ambientocclusion 1
+
+    $phong "1"
+    $phongfresnelranges "[1 1 1]"
+    $phongboost 4
+    $phongexponent 20
 }
