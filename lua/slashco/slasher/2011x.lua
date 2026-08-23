@@ -34,7 +34,7 @@ SLASHER.Eyesight = 3
 SLASHER.KillDistance = 70
 
 SLASHER.JumpscareDuration = 1
-SLASHER.ChaseMusic = "slashco/slasher/2011x/2011x_tempChase.ogg"
+SLASHER.ChaseMusic = "slashco/slasher/2011x/2011x_tempChase.mp3"
 SLASHER.ChaseRange = 300
 SLASHER.ChaseRadius = 0.1
 SLASHER.KillSound = ""
