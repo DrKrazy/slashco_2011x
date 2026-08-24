@@ -5,6 +5,39 @@ ENT.Base = "sc_baseitem"
 ENT.PrintName = "Test Entity"
 ENT.Spawnable = true
 
+-- Replaces the player's ragdoll and adds velocity to it, it's just usefull
+function replaceRagdoll(self, player, ragdollModel, expKnockback)
+	local ragdoll = player.DeadBody
+
+	local burntRagdoll = ents.Create("prop_ragdoll")
+	burntRagdoll:SetModel("models/Humans/Charple01.mdl")
+	burntRagdoll.PingType = "DEAD BODY"
+	burntRagdoll.SurvivorSteamID = player:SteamID64()
+	burntRagdoll:AddEFlags(EFL_KEEP_ON_RECREATE_ENTITIES)
+
+	player.DeadBody = burntRagdoll
+
+	burntRagdoll:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+	burntRagdoll:SetPos(player:GetPos())
+	burntRagdoll:SetNoDraw(false)
+	burntRagdoll:Spawn()
+	burntRagdoll:Activate()
+	burntRagdoll:Fire("Ignite", 0, 0)
+	ragdoll:Remove()
+
+	if not IsValid(burntRagdoll) then return end
+
+	for i = 0, burntRagdoll:GetPhysicsObjectCount() do
+		local phys = burntRagdoll:GetPhysicsObjectNum(i)
+
+		if IsValid(phys) then
+			phys:AddVelocity(-(self:GetPos() - burntRagdoll:GetPos()) * expKnockback)
+		end
+	end
+
+	return burntRagdoll
+end
+
 function ENT:Initialize()
 	self:SetNotSolid( true )
 	self:PhysicsInit( SOLID_VPHYSICS )
@@ -20,9 +53,9 @@ if SERVER then
 		local expRange = self:GetVar("expRange")
 		local expDamage = self:GetVar("expDamage")
 		local expDelay = self:GetVar("expDelay")
-		local expForce = self:GetVar("expForce")
+		local expKnockback = self:GetVar("expKnockback")
 		local triggeredColor = self:GetVar("triggeredColor")
-		local slasherKnockback = self:GetVar("slasherKnockback")
+		local slowActive = self:GetVar("slowActive")
 		local slowMinDuration = self:GetVar("slowMinDuration")
 		local slowMaxDuration = self:GetVar("slowMaxDuration")
 		local slowMinDistance = self:GetVar("slowMinDistance")
@@ -32,7 +65,7 @@ if SERVER then
 		-- 	"expRange: " .. tostring(expRange) .. "\n" ..
 		-- 	"expDamage: " .. tostring(expDamage) .. "\n" ..
 		-- 	"expDelay: " .. tostring(expDelay) .. "\n" ..
-		-- 	"expForce: " .. tostring(expForce) .. "\n" ..
+		-- 	"expKnockback: " .. tostring(expKnockback) .. "\n" ..
 		-- 	"triggeredColor: " .. tostring(triggeredColor) .. "\n" ..
 		-- 	"self.pos: " .. tostring(self:GetPos())
 		-- )
@@ -44,13 +77,33 @@ if SERVER then
 			for _, ent in ipairs(ents.FindInSphere(pos, expRange)) do
 				if not IsValid(ent) or ent == self then continue end
 
-				if ent:IsPlayer() and (ent:Team() == TEAM_SURVIVOR or slasherKnockback) then
-					ent:TakeDamage(expDamage, self, self)
-					ent:SetVelocity(-(pos - ent:GetPos()) * expForce)
-					ent:AddEffect("Slowness", math.Remap(self:GetPos():Distance(self:GetOwner():GetPos()), slowMinDistance, slowMaxDistance, slowMinDuration, slowMaxDuration))
-				end
+				-- If its of the same class (so a fake item), we explode it and continue
 				if ent:GetClass() == self:GetClass() then
 					ent:Explode()
+					continue
+				end
+
+				-- If the entity isnt a player, we continue
+				-- If the player isn't a survivor and slasherknockback is false, we continue
+				if not ent:IsPlayer() or ent:Team() ~= TEAM_SURVIVOR then continue end
+
+				if (ent:Health() < expDamage) then
+					ent:Kill()
+
+					replaceRagdoll(self, ent, "models/Humans/Charple01.mdl", expKnockback)
+				end
+				ent:TakeDamage(expDamage, self, self)
+				ent:SetVelocity(-(pos - ent:GetPos()) * expKnockback)
+
+				if slowActive then
+					ent:AddEffect("Slowness",
+					math.Remap(
+						self:GetPos():Distance(self:GetOwner():GetPos()),
+						slowMinDistance,
+						slowMaxDistance,
+						slowMinDuration,
+						slowMaxDuration)
+					)
 				end
 			end
 

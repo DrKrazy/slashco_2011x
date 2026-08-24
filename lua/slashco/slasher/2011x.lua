@@ -68,7 +68,7 @@ SLASHER.XSettings = {
 
 	-- Passives
 	Clones = {
-		spawnTimer = 1,					-- Time between each spawn
+		spawnTimer = 10,					-- Time between each spawn
 		maxAmount = 4,					-- Amount of Clones that can spawn
 		duration = nil,					-- Duration of a clone until it dissapears (nil for infinite)
 
@@ -84,7 +84,7 @@ SLASHER.XSettings = {
 	LMB = {
 		cooldown = 1,
 		globalCooldown = 1,
-		knockback = 9999,
+		knockback = 150,
 		hitboxSize = 120,
 
 		damage = 30,
@@ -93,18 +93,18 @@ SLASHER.XSettings = {
 
 	-- Right Click (spawns an explosive item that explodes on use or if pinged by 2011x)
 	FakeItem = {
-		cooldown = 1,						-- Cooldown between this ability's uses
+		cooldown = 0,						-- Cooldown between this ability's uses
 		spawnLimit = 4,						-- Max amount of fake items you can spawn
 		maxNear = nil,						-- Amount that can be in range of eachother before they start to detonate (nil for infinite)
 
 		triggeredColor = Color(255,0,0),  -- Color of the fake item when it is triggered
 		expDelay = 0.2,						-- The delay after use before the explosion happens
-		expRange = 200,						-- Range of explosion
-		expDamage = 25,						-- Amount of damage it does when it explodes
-		expForce = 25,						-- Force of the explosion (used to apply velocity to players)
-		slasherKnockback = false, 			-- Force of the explosion will also apply to the slasher (rocket jumping)
+		expRange = 100,						-- Range of explosion
+		expDamage = 5,						-- Amount of damage it does when it explodes
+		expKnockback = 25,						-- Force of the explosion (used to apply velocity to players)
 
-		slowness = {
+		Slowness = {
+			active = true,
 			minDuration = 1,
 			maxDuration = 8,
 
@@ -112,11 +112,12 @@ SLASHER.XSettings = {
 			maxDistance = 800
 		},
 
-
 		-- Sub ability of fake items, used when they're detonated via ping
 		Detonate = {
-			cooldown = 6,
-			globalCooldown = 0
+			cooldown = 0,				-- Cooldown between this ability's uses
+			globalCooldown = 0,			-- Global cooldown on all abilities when used
+
+			expDamageOverride = 999		-- The damage the fake item explosion will do if detonated by the 2011x
 		},
 
 		-- List of items that X can spawns with FakeItem
@@ -207,13 +208,13 @@ function spawnFakeItem(slasher)
 	fakeItem:SetVar("expRange", SLASHER.XSettings.FakeItem.expRange)
 	fakeItem:SetVar("expDamage", SLASHER.XSettings.FakeItem.expDamage)
 	fakeItem:SetVar("expDelay", SLASHER.XSettings.FakeItem.expDelay)
-	fakeItem:SetVar("expForce", SLASHER.XSettings.FakeItem.expForce)
+	fakeItem:SetVar("expKnockback", SLASHER.XSettings.FakeItem.expKnockback)
 	fakeItem:SetVar("maxNear", SLASHER.XSettings.FakeItem.maxNear)
-	fakeItem:SetVar("slasherKnockback", SLASHER.XSettings.FakeItem.slasherKnockback)
-	fakeItem:SetVar("slowMinDuration", SLASHER.XSettings.FakeItem.slowness.minDuration)
-	fakeItem:SetVar("slowMaxDuration", SLASHER.XSettings.FakeItem.slowness.maxDuration)
-	fakeItem:SetVar("slowMinDistance", SLASHER.XSettings.FakeItem.slowness.minDistance)
-	fakeItem:SetVar("slowMaxDistance", SLASHER.XSettings.FakeItem.slowness.maxDistance)
+	fakeItem:SetVar("slowActive", SLASHER.XSettings.FakeItem.Slowness.active)
+	fakeItem:SetVar("slowMinDuration", SLASHER.XSettings.FakeItem.Slowness.minDuration)
+	fakeItem:SetVar("slowMaxDuration", SLASHER.XSettings.FakeItem.Slowness.maxDuration)
+	fakeItem:SetVar("slowMinDistance", SLASHER.XSettings.FakeItem.Slowness.minDistance)
+	fakeItem:SetVar("slowMaxDistance", SLASHER.XSettings.FakeItem.Slowness.maxDistance)
 
 	fakeItem:Spawn()
 	fakeItem:Activate()
@@ -254,12 +255,6 @@ function damagePlayer(slasher, victim, damage, damageForce)
 				else
 					victim:Kill()
 				end
-
-				local ragdoll = victim.DeadBody
-
-				ragdoll:Fire("Ignite", "", 0)
-				ragdoll:SetModel("models/player/corpse1.mdl")
-
 				slasher:Freeze(false)
 			end)
 			return true
@@ -301,6 +296,7 @@ function SLASHER.OnSpawn(slasher)
 	slasher:SetNWFloat("2011xChargeCooldown")
 	slasher:SetNWFloat("2011xTpToCloneCooldown", 0)
 	slasher:SetNWFloat("2011xDetonateCooldown", 0)
+
 	slasher:SetNWFloat("2011xGlobalCooldown", 0)
 
 	slasher:SetNWBool("2011xCharging", false )
@@ -381,6 +377,7 @@ function SLASHER.OnTickBehaviour(slasher)
 
 	slasher:SetNWBool("2011xCanFakeItem",
 		slasher:GetNWFloat("2011xFakeItemCooldown") <= 0
+		and #ents.FindByClass("sc_x_fakeitem") < SLASHER.XSettings.FakeItem.spawnLimit
 		and not globalCooldown
 		and not stunned
 	)
@@ -478,7 +475,7 @@ function SLASHER.OnPrimaryFire(slasher)
 
 	local target = tr.Entity
 	if target:IsValid() and target:Team() == TEAM_SURVIVOR then
-		damagePlayer(slasher, target, SLASHER.XSettings.LMB.damage, 200)
+		damagePlayer(slasher, target, SLASHER.XSettings.LMB.damage, SLASHER.XSettings.LMB.knockback)
 	end
 end
 
@@ -771,7 +768,10 @@ if SERVER then
 
 			-- If 2011x pings a fake item and it can blow up, we blow it up (we don't care if its another 20xx's fake item, they're shared)
 			if pingInfo.Team == TEAM_SLASHER and pingingPlayer:GetNWBool("2011xCanDetonate", false) then
+				entity:SetVar("expDamage", SLASHER.XSettings.FakeItem.Detonate.expDamageOverride)
+				entity:SetVar("slowActive", false)
 				entity:Explode()
+
 				pingingPlayer:SetNWFloat("2011xDetonateCooldown", SLASHER.XSettings.FakeItem.Detonate.cooldown)
 				pingingPlayer:SetNWFloat("2011xGlobalCooldown", SLASHER.XSettings.FakeItem.Detonate.globalCooldown)
 			end

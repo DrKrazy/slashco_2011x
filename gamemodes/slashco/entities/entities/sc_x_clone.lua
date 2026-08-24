@@ -90,13 +90,13 @@ if CLIENT then
 
 		local dlight = DynamicLight(self:EntIndex())
 		if dlight then
-			dlight.pos = self:LocalToWorld(Vector(0,0,40))
+			dlight.pos = self:LocalToWorld(Vector(0,0,30))
 			dlight.r = chaseColor.r
 			dlight.g = chaseColor.g
 			dlight.b = chaseColor.b
-			dlight.brightness = 6
+			dlight.brightness = 1
 
-			local size = 250
+			local size = 200
 			dlight.Size = size
 			dlight.DieTime = CurTime()
 		end
