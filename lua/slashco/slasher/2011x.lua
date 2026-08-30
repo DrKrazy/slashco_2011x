@@ -1,10 +1,11 @@
 local SLASHER = {}
 local SlashCoItems = SlashCoItems or {}
+DEBUG = true
 
 --[[
 2011x INFO:
 
-CREDITS: 
+CREDITS:
 - Crusty (dc: loadsoffun): Original kit and project
 - Krazy (dc: doctorkrazy): Model porter, kit continuation, lead and project hijacker (oops)
 - DarksArtworks (link: https://darksartworks.itch.io/): Original creator of the 2011x model
@@ -27,8 +28,8 @@ SLASHER.IsSelectable = true
 SLASHER.Model = "models/slashco/slashers/2011x/2011x.mdl"
 SLASHER.GasCanMod = 0
 SLASHER.KillDelay = 2
-SLASHER.ProwlSpeed = 310
-SLASHER.ChaseSpeed = 310
+SLASHER.ProwlSpeed = 290
+SLASHER.ChaseSpeed = SLASHER.ProwlSpeed
 SLASHER.Perception = 1.0
 SLASHER.Eyesight = 3
 SLASHER.KillDistance = 70
@@ -37,7 +38,6 @@ SLASHER.JumpscareDuration = 1
 SLASHER.ChaseMusic = "slashco/slasher/2011x/2011x_tempChase.mp3"
 SLASHER.ChaseRange = 300
 SLASHER.ChaseRadius = 0.1
-SLASHER.KillSound = ""
 
 SLASHER.Description = "X_desc"
 SLASHER.ProTip = "X_tip"
@@ -48,9 +48,6 @@ SLASHER.StunTime = 1
 
 -- 2011X Specific Parameters (sorry to whoever wants to balance this fucking slasher lmfao)
 SLASHER.XSettings = {
-	-- This is used for debugging purposes, please disable that for normal gameplay
-	DEBUG = true,
-
 	-- Normal settings
 	chaseColor = Color(38, 0, 255),
 
@@ -60,6 +57,8 @@ SLASHER.XSettings = {
 		["sc_generator"] = "pieceofshit",
 		["sc_battery"] = "fuckyou",
 		["sc_x_fakeitem"] = "fuckyou",
+		["sc_x_clone"] = "fuckyou",
+		["prop_ragdoll"] = "pieceofshit",
 
 		["survivor"] = { "pieceofshit", "fuckyou" },
 		["2011x"] = "pieceofshit",
@@ -68,8 +67,8 @@ SLASHER.XSettings = {
 
 	-- Passives
 	Clones = {
-		spawnTimer = 10,					-- Time between each spawn
-		maxAmount = 4,					-- Amount of Clones that can spawn
+		spawnTimer = 0,					-- Time between each spawn
+		maxAmount = 10,					-- Amount of Clones that can spawn
 		duration = nil,					-- Duration of a clone until it dissapears (nil for infinite)
 
 		detectionRange = 200,			-- Clone's detection range (used for outlining and apperance range for the survivor)
@@ -87,7 +86,7 @@ SLASHER.XSettings = {
 		knockback = 150,
 		hitboxSize = 120,
 
-		damage = 30,
+		damage = 35,
 		windup = 0.5,
 	},
 
@@ -122,6 +121,7 @@ SLASHER.XSettings = {
 
 		-- List of items that X can spawns with FakeItem
 		-- Ping type can't be retrieved from mimic entity, so we have to set it manually
+		-- vlInput is the suffix for the voiceline, mainly used for fake items to play the right voicelines when survivors ping em
 		spawnList = {
 			{ entity = "sc_gascan" , 	pingtype = "GasCan",	vlInput = "gascan"},
 			{ entity = "sc_battery" , 	pingtype = "Battery",	vlInput = "battery"},
@@ -147,19 +147,12 @@ SLASHER.XSettings = {
 
 	-- When looking at a clone from anywhere i nthe map you can swap positions with it, usefull for ambushes
 	TpToClone = {
-		globalCooldown = 1,				-- Global cooldown on all abilities when used (prevents being able to instantly do stuff after manifesting)
-		cooldown = 2,					-- Cooldown between this ability's uses
+		globalCooldown = 0,				-- Global cooldown on all abilities when used (prevents being able to instantly do stuff after manifesting)
+		cooldown = 0,					-- Cooldown between this ability's uses
 
 		tpRange = 2048					-- Maximum range of the teleport (clones farther can't be teleport to)
 	},
 }
-
--- We do be precachin
-hook.Add("SlashCo:Precache", "SlashCo:PrecacheBeacon", function()
-	for slasher, voiceline in pairs(table) do
-		SlashCo.PrecacheSound("slashco/slasher/2011x/specialinteraction_" .. tostring(voiceline) .. ".mp3")
-	end
-end)
 
 -- Functions used for abilities
 
@@ -168,7 +161,15 @@ function sayPrompt(ply, input)
 	if ply:Team() == TEAM_SURVIVOR then
 		ply:EmitSound("slashco/survivor/voice/prompt_" .. input .. math.random(1,3) .. ".mp3")
 	elseif ply:Team() == TEAM_SLASHER and ply:GetNWString("Slasher") == "2011x" then
-		ply:EmitSound("slashco/slasher/2011x/specialinteraction_" .. input .. ".mp3")
+		SlashCo.AudioSystem.PlaySound({
+			soundPath = "slashco/slasher/2011x/specialinteraction_" .. input .. ".mp3",
+			identifier = "2011xInteraction" .. ply:EntIndex(),
+			minDistance = 500,
+			maxDistance = 750,
+			entity = ply,
+			volume = 1,
+			fadeIn = 0,
+		})
 	end
 end
 
@@ -362,7 +363,7 @@ function SLASHER.OnTickBehaviour(slasher)
 	if (slasher:GetNWFloat("2011xDetonateCooldown") > 0) then slasher:SetNWFloat("2011xDetonateCooldown", slasher:GetNWFloat("2011xDetonateCooldown") - FrameTime()) end
 	if (slasher:GetNWFloat("2011xGlobalCooldown") > 0) then slasher:SetNWFloat("2011xGlobalCooldown", slasher:GetNWFloat("2011xGlobalCooldown") - FrameTime()) end
 
-	-- Global conditional for if you can use each ability or not, 
+	-- Global conditional for if you can use each ability or not,
 	-- this is a fuck fest and i have no clue how to potentially optimize this while keeping how it looks
 
 	local globalCooldown = slasher:GetNWFloat("2011xGlobalCooldown") > 0
@@ -418,7 +419,7 @@ function SLASHER.OnTickBehaviour(slasher)
 					finalDamage = finalDamage * ((SLASHER.XSettings.Charge.duration - timer.TimeLeft("2011xCharge_" .. slasher:EntIndex())) / SLASHER.XSettings.Charge.duration)
 				end
 
-				if SLASHER.XSettings.DEBUG then
+				if DEBUG then
 					print("Charge damage: " .. finalDamage)
 				end
 				timer.Stop("2011xCharge_" .. slasher:EntIndex())
@@ -524,16 +525,27 @@ function SLASHER.OnSpecialAbilityFire(slasher)
 	-- We swap em
 	if (trace.Hit and trace.Entity:IsValid()) then
 		local tempPos, tempAngle = slasher:GetPos(), slasher:GetAngles()
+		local entity = trace.Entity
 
 		slasher:SetPos(trace.Entity:GetPos())
 		slasher:SetEyeAngles(trace.Entity:GetAngles())
 
-		trace.Entity:SetPos(tempPos)
-		trace.Entity:SetAngles(tempAngle)
+		entity:SetPos(tempPos)
+		entity:SetAngles(tempAngle)
+
+		SlashCo.AudioSystem.PlaySound({
+			soundPath = "slashco/slasher/2011x/teleport.mp3",
+			identifier = "2011xTeleport" .. slasher:EntIndex(),
+			minDistance = 0,
+			maxDistance = 2000,
+			entity = slasher,
+			volume = 0.5,
+			fadeIn = 0,
+		})
 	end
 end
 
---[[ 
+--[[
 Will be done later
 
 function SLASHER.OnBalanceForPlayers(totalSurvivors, additionalSurvivors)
@@ -552,13 +564,32 @@ end
 
 -- Animator function, will be finished when animations are done
 function SLASHER.Animator(ply)
-	ply.CalcIdeal = ACT_IDLE
-	ply.CalcSeqOverride = ply:LookupSequence("idle")
+	local stunned = ply:GetNWBool("2011xStunned")
+	local charging = ply:GetNWBool("2011xCharging")
 
-	--ply:SetPoseParameter("body_pitch", -ply:EyeAngles().pitch)
+	if not stunned then
+		ply.anim_antispam = false
+	end
 
-	-- This fucking bullshit took me way too long to figure out, i fucking HATE math, please use it
-	--ply:SetPoseParameter("body_yaw", -(math.AngleDifference(ply:EyeAngles().y, select(2, ply:GetBonePosition(0)).y) + 90))
+	if ply:IsOnGround() then
+		if charging then
+			ply.CalcIdeal = ACT_HL2MP_RUN
+			ply.CalcSeqOverride = ply:LookupSequence("charge_run")
+		else
+			ply.CalcIdeal = ACT_HL2MP_WALK
+			ply.CalcSeqOverride = ply:LookupSequence("run")
+		end
+	else
+		ply.CalcSeqOverride = ply:LookupSequence("float")
+	end
+
+	if stunned then
+		ply.CalcSeqOverride = ply:LookupSequence("stunned")
+		if not ply.anim_antispam then
+			ply:SetCycle(0)
+			ply.anim_antispam = true
+		end
+	end
 
 	return ply.CalcIdeal, ply.CalcSeqOverride
 end
@@ -594,7 +625,35 @@ SLASHER.OnHitByBeerKeg = function(slasher) SLASHER.OnHitByPocketSand(slasher, ni
 SLASHER.OnHitByTeslaCoil = function(slasher) SLASHER.OnHitByPocketSand(slasher, nil) end
 
 -- Hud function, this is where you do cool UI shit
+local lmbTable = {
+	default = Material("slashco/ui/icons/slasher/2011x/LMB"),
+	["d/"] = Material("slashco/ui/icons/slasher/2011x/LMB_d")
+}
+
+local rmbTable = {
+	default = Material("slashco/ui/icons/slasher/2011x/fakeitem"),
+	["d/"] = Material("slashco/ui/icons/slasher/2011x/fakeitem_d")
+}
+
+local mwTable = {
+	default = Material("slashco/ui/icons/slasher/2011x/"),
+	["d/"] = Material("slashco/ui/icons/slasher/2011x/_d"),
+	["detonate"] = Material("slashco/ui/icons/slasher/2011x/detonate"),
+	["d/detonate"] = Material("slashco/ui/icons/slasher/2011x/detonate_d")
+}
+
+local fTable = {
+	default = Material("slashco/ui/icons/slasher/2011x/tptoclone"),
+	["d/"] = Material("slashco/ui/icons/slasher/2011x/tptoclone_d")
+}
+
+local rTable = {
+	default = Material("slashco/ui/icons/slasher/2011x/charge"),
+	["d/"] = Material("slashco/ui/icons/slasher/2011x/charge_d")
+}
+
 function SLASHER.InitHud(_, hud)
+	hud:SetAvatar(Material("slashco/ui/icons/slasher/2011x/avatar"))
 	hud:SetTitle(SLASHER.Name)
 	hud:SetCrosshairEnabled(true)
 	hud:SetCrosshairAlpha(255)
@@ -616,15 +675,50 @@ function SLASHER.InitHud(_, hud)
 	-- This was made to make creating the controls and editing them easier for the cooldown system
 	-- Do NOT make this a hash table, otherwise you won't be able to control the order in the hud
 	handleCooldowns = {
-		{ key = "R", 	 		controlName = "X_charge", 		netVarCD = "2011xChargeCooldown", 		netVarTie = "2011xCanCharge", 		preventOverwrite = false},
-		{ key = "F", 	 		controlName = "X_teleport",	netVarCD = "2011xTpToCloneCooldown", 	netVarTie = "2011xCanTpToClone", 	preventOverwrite = false},
-		{ key = "MOUSEWHEEL", 	controlName = "X_detonate", 	netVarCD = "2011xDetonateCooldown", 	netVarTie = "2011xCanDetonate", 	preventOverwrite = true},
-		{ key = "RMB", 	 		controlName = "X_fakeItem", 	netVarCD = "2011xFakeItemCooldown", 	netVarTie = "2011xCanFakeItem", 	preventOverwrite = false},
-		{ key = "LMB", 	 		controlName = "kill survivor", netVarCD = "2011xLMBCooldown", 			netVarTie = "2011xCanLMB", 			preventOverwrite = false},
+		{
+			key = "R",
+			controlName = "X_charge",
+			netVarCD = "2011xChargeCooldown",
+			netVarTie = "2011xCanCharge",
+			icon = rTable,
+			preventOverwrite = false,
+		},
+		{
+			key = "F",
+			controlName = "X_teleport",
+			netVarCD = "2011xTpToCloneCooldown",
+			netVarTie = "2011xCanTpToClone",
+			icon = fTable,
+			preventOverwrite = false,
+		},
+		{
+			key = "MOUSEWHEEL",
+			controlName = "X_detonate",
+			netVarCD = "2011xDetonateCooldown",
+			netVarTie = "2011xCanDetonate",
+			icon = mwTable,
+			preventOverwrite = true,
+		},
+		{
+			key = "RMB",
+			controlName = "X_fakeItem",
+			netVarCD = "2011xFakeItemCooldown",
+			netVarTie = "2011xCanFakeItem",
+			icon = rmbTable,
+			preventOverwrite = false,
+		},
+		{
+			key = "LMB",
+			controlName = "kill survivor",
+			netVarCD = "2011xLMBCooldown",
+			netVarTie = "2011xCanLMB",
+			icon = lmbTable,
+			preventOverwrite = false,
+		},
 	}
 
 	for _, control in pairs(handleCooldowns) do
-		hud:AddControl(control.key, "")
+		hud:AddControl(control.key, "", control.icon)
 		hud:TieControl(control.key, control.netVarTie, false, true, nil)
 	end
 
@@ -653,32 +747,32 @@ function SLASHER.InitHud(_, hud)
 			hud:SetControlText(control.key, text)
 		end
 
-		if SLASHER.XSettings.DEBUG then
-		local debugTable = {
-			{ seperator = " :", debugString = "", value = "Cooldowns"},
-			{ seperator = " : ", debugString = "2011xLMBCooldown", value = math.Clamp(slasher:GetNWFloat("2011xLMBCooldown", 0), 0, math.huge)},
-			{ seperator = " : ", debugString = "2011xFakeItemCooldown", value = math.Clamp(slasher:GetNWFloat("2011xFakeItemCooldown", 0), 0, math.huge)},
-			{ seperator = " : ", debugString = "2011xChargeCooldown", value = math.Clamp(slasher:GetNWFloat("2011xChargeCooldown", 0), 0, math.huge)},
-			{ seperator = " : ", debugString = "2011xTpToCloneCooldown", value = math.Clamp(slasher:GetNWFloat("2011xTpToCloneCooldown", 0), 0, math.huge)},
-			{ seperator = " : ", debugString = "2011xDetonateCooldown", value = math.Clamp(slasher:GetNWFloat("2011xDetonateCooldown", 0), 0, math.huge)},
-			{ seperator = " : ", debugString = "2011xGlobalCooldown", value = math.Clamp(slasher:GetNWFloat("2011xGlobalCooldown", 0), 0, math.huge)},
+		if DEBUG then
+			local debugTable = {
+				{ seperator = " :", debugString = "", value = "Cooldowns"},
+				{ seperator = " : ", debugString = "2011xLMBCooldown", value = math.Clamp(slasher:GetNWFloat("2011xLMBCooldown", 0), 0, math.huge)},
+				{ seperator = " : ", debugString = "2011xFakeItemCooldown", value = math.Clamp(slasher:GetNWFloat("2011xFakeItemCooldown", 0), 0, math.huge)},
+				{ seperator = " : ", debugString = "2011xChargeCooldown", value = math.Clamp(slasher:GetNWFloat("2011xChargeCooldown", 0), 0, math.huge)},
+				{ seperator = " : ", debugString = "2011xTpToCloneCooldown", value = math.Clamp(slasher:GetNWFloat("2011xTpToCloneCooldown", 0), 0, math.huge)},
+				{ seperator = " : ", debugString = "2011xDetonateCooldown", value = math.Clamp(slasher:GetNWFloat("2011xDetonateCooldown", 0), 0, math.huge)},
+				{ seperator = " : ", debugString = "2011xGlobalCooldown", value = math.Clamp(slasher:GetNWFloat("2011xGlobalCooldown", 0), 0, math.huge)},
 
-			{ seperator = "", debugString = "", value = ""},
-			{ seperator = " :", debugString = "", value = "Abilities"},
-			{ seperator = " : ", debugString = "2011xCanFakeItem", value = slasher:GetNWBool("2011xCanFakeItem", false)},
-			{ seperator = " : ", debugString = "2011xCanCharge", value = slasher:GetNWBool("2011xCanCharge", false)},
-			{ seperator = " : ", debugString = "2011xCanTpToClone", value = slasher:GetNWBool("2011xCanTpToClone", false)},
-			{ seperator = " : ", debugString = "2011xCanDetonate", value = slasher:GetNWBool("2011xCanDetonate", false)},
-			{ seperator = " : ", debugString = "2011xLookingAtFakeItem", value = slasher:GetNWBool("2011xLookingAtFakeItem", false)},
+				{ seperator = "", debugString = "", value = ""},
+				{ seperator = " :", debugString = "", value = "Abilities"},
+				{ seperator = " : ", debugString = "2011xCanFakeItem", value = slasher:GetNWBool("2011xCanFakeItem", false)},
+				{ seperator = " : ", debugString = "2011xCanCharge", value = slasher:GetNWBool("2011xCanCharge", false)},
+				{ seperator = " : ", debugString = "2011xCanTpToClone", value = slasher:GetNWBool("2011xCanTpToClone", false)},
+				{ seperator = " : ", debugString = "2011xCanDetonate", value = slasher:GetNWBool("2011xCanDetonate", false)},
+				{ seperator = " : ", debugString = "2011xLookingAtFakeItem", value = slasher:GetNWBool("2011xLookingAtFakeItem", false)},
 
-			{ seperator = "", debugString = "", value = ""},
-			{ seperator = " :", debugString = "", value = "Player"},
-			{ seperator = " : ", debugString = "Velocity", value = math.Round(slasher:GetVelocity():Length())},
-		}
-		for i, debugText in ipairs(debugTable) do
-			DebugInfo(i, tostring(debugText.value) .. debugText.seperator .. debugText.debugString)
+				{ seperator = "", debugString = "", value = ""},
+				{ seperator = " :", debugString = "", value = "Player"},
+				{ seperator = " : ", debugString = "Velocity", value = math.Round(slasher:GetVelocity():Length())},
+			}
+			for i, debugText in ipairs(debugTable) do
+				DebugInfo(i, tostring(debugText.value) .. debugText.seperator .. debugText.debugString)
+			end
 		end
-	end
 	end
 end
 
@@ -697,12 +791,26 @@ function SLASHER.PreDrawHalos(slasher)
 	SlashCo.DrawHalo(ents.FindByClass("sc_x_*"), Color(255,0,255), nil, true)
 end
 
+function SLASHER.OnPlayerDeath(slasher, victim)
+	timer.Simple(1, function()
+		SlashCo.AudioSystem.PlaySound({
+			soundPath = "slashco/slasher/2011x/dylan_laugh.mp3",
+			identifier = "2011xLaugh" .. slasher:EntIndex(),
+			minDistance = 5000,
+			maxDistance = 1000,
+			entity = slasher,
+			volume = 0.5,
+			fadeIn = 0,
+		})
+	end)
+end
+
 -- For client hooks
 
 if CLIENT then
 	hook.Add("Think", "FakeChaseLight", function()
 		for _, slasher in ipairs(team.GetPlayers(TEAM_SLASHER)) do
-			if not slasher:GetNWBool("InSlasherChaseMode") then return end
+			if not slasher:GetNWBool("InSlasherChaseMode") or SlashCoSlashers[slasher:GetNWString("Slasher")] ~= SLASHER then return end
 			local dlight = DynamicLight(slasher:UserID())
 
 			if dlight then
@@ -757,7 +865,7 @@ if SERVER then
 		-- Fake item stuff
 		if IsValid(entity) and entity:GetClass() == "sc_x_fakeitem" then
 			-- If a survivor pings the fake item, we make them say the line and return
-			if pingingPlayer.Team == TEAM_SURVIVOR then
+			if pingInfo.Team == TEAM_SURVIVOR then
 				local voiceLine = GetVoiceByPingType(pingInfo.Type)
 
 				if voiceLine then
@@ -781,7 +889,7 @@ if SERVER then
 		local returnTarget = pingInfo.Type
 		if IsValid(entity) then returnTarget = entity:GetClass() end
 
-		if SLASHER.XSettings.DEBUG then
+		if DEBUG then
 			print("Pinged: " .. returnTarget)
 		end
 

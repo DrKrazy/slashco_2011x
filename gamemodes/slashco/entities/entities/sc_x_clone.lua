@@ -79,7 +79,7 @@ if CLIENT then
 
 		local headbone = self:LookupBone("bip_head")
 		if headbone then
-			local direction = self:WorldToLocal(client:GetPos())
+			local direction = self:WorldToLocal(client:EyePos() + Vector(0,0,-40))
 
 			local ang = direction:Angle()
 			ang = Angle(ang.y, 0, ang.p)

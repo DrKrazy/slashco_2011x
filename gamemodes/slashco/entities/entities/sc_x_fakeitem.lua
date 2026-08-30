@@ -42,6 +42,7 @@ function ENT:Initialize()
 	self:SetNotSolid( true )
 	self:PhysicsInit( SOLID_VPHYSICS )
 	self:SetSolid( SOLID_VPHYSICS )
+	self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 	self:PhysWake()
 end
 
@@ -105,6 +106,15 @@ if SERVER then
 						slowMaxDuration)
 					)
 				end
+
+				--print(ent:Nick() .. " slashco_tyler_disable_shake: " .. ent:GetInfo("slashco_tyler_disable_shake") or "nothing")
+				ent:AddEffect("Dazed", math.Remap(
+						self:GetPos():Distance(self:GetOwner():GetPos()),
+						slowMinDistance,
+						slowMaxDistance,
+						slowMinDuration,
+						slowMaxDuration)
+					)
 			end
 
 			local effect = EffectData()
