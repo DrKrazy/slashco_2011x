@@ -1,5 +1,9 @@
+--[[ 
+	A bunch of helper functions used here and there, will remove some that are only used once in the future.
+]]
+
 -- Logic to make either survivor or 2011x say a voice line (might be refined later)
-function sayPrompt(ply, input)
+function SLASHER.sayPrompt(ply, input)
 	if ply:Team() == TEAM_SURVIVOR then
 		ply:EmitSound("slashco/survivor/voice/prompt_" .. input .. math.random(1,3) .. ".mp3")
 	elseif ply:Team() == TEAM_SLASHER and ply:GetNWString("Slasher") == "2011x" then
@@ -16,8 +20,8 @@ function sayPrompt(ply, input)
 end
 
 -- Getting the voiceline suffix by ping type for fake items, used for survivors mainly
-function GetVoiceByPingType(pingtype)
-	for _, item in ipairs(SLASHER.XSettings.FakeItem.spawnList) do
+function SLASHER.GetVoiceByPingType(pingtype)
+	for _, item in ipairs(SLASHER.Config.FakeItem.spawnList) do
 		if item.pingtype == pingtype then
 			return item.vlInput
 		end
@@ -26,7 +30,7 @@ function GetVoiceByPingType(pingtype)
 end
 
 -- Used to end the charge properly
-function endCharge(slasher, doStun, stunTime)
+function SLASHER.endCharge(slasher, doStun, stunTime)
 	slasher:SetFriction(1)
 	slasher:SetNWBool("2011xCharging", false)
 
@@ -34,8 +38,8 @@ function endCharge(slasher, doStun, stunTime)
 end
 
 -- Spawns the fake item with all its relevant stats
-function spawnFakeItem(slasher)
-	local selectedFakeItem = SLASHER.XSettings.FakeItem.spawnList[slasher:GetNWInt("2011xCurFakeItemSelection")]
+function SLASHER.spawnFakeItem(slasher)
+	local selectedFakeItem = SLASHER.Config.FakeItem.spawnList[slasher:GetNWInt("2011xCurFakeItemSelection")]
 
 	local mimicItem = ents.Create(selectedFakeItem.entity)
 	mimicItem:Spawn()
@@ -47,17 +51,17 @@ function spawnFakeItem(slasher)
 	fakeItem.PingType = selectedFakeItem.pingtype
 	mimicItem:Remove()
 
-	fakeItem:SetVar("triggeredColor", SLASHER.XSettings.FakeItem.triggeredColor)
-	fakeItem:SetVar("expRange", SLASHER.XSettings.FakeItem.expRange)
-	fakeItem:SetVar("expDamage", SLASHER.XSettings.FakeItem.expDamage)
-	fakeItem:SetVar("expDelay", SLASHER.XSettings.FakeItem.expDelay)
-	fakeItem:SetVar("expKnockback", SLASHER.XSettings.FakeItem.expKnockback)
-	fakeItem:SetVar("maxNear", SLASHER.XSettings.FakeItem.maxNear)
-	fakeItem:SetVar("slowActive", SLASHER.XSettings.FakeItem.Slowness.active)
-	fakeItem:SetVar("slowMinDuration", SLASHER.XSettings.FakeItem.Slowness.minDuration)
-	fakeItem:SetVar("slowMaxDuration", SLASHER.XSettings.FakeItem.Slowness.maxDuration)
-	fakeItem:SetVar("slowMinDistance", SLASHER.XSettings.FakeItem.Slowness.minDistance)
-	fakeItem:SetVar("slowMaxDistance", SLASHER.XSettings.FakeItem.Slowness.maxDistance)
+	fakeItem:SetVar("triggeredColor", SLASHER.Config.FakeItem.triggeredColor)
+	fakeItem:SetVar("expRange", SLASHER.Config.FakeItem.expRange)
+	fakeItem:SetVar("expDamage", SLASHER.Config.FakeItem.expDamage)
+	fakeItem:SetVar("expDelay", SLASHER.Config.FakeItem.expDelay)
+	fakeItem:SetVar("expKnockback", SLASHER.Config.FakeItem.expKnockback)
+	fakeItem:SetVar("maxNear", SLASHER.Config.FakeItem.maxNear)
+	fakeItem:SetVar("slowActive", SLASHER.Config.FakeItem.Slowness.active)
+	fakeItem:SetVar("slowMinDuration", SLASHER.Config.FakeItem.Slowness.minDuration)
+	fakeItem:SetVar("slowMaxDuration", SLASHER.Config.FakeItem.Slowness.maxDuration)
+	fakeItem:SetVar("slowMinDistance", SLASHER.Config.FakeItem.Slowness.minDistance)
+	fakeItem:SetVar("slowMaxDistance", SLASHER.Config.FakeItem.Slowness.maxDistance)
 
 	fakeItem:Spawn()
 	fakeItem:Activate()
@@ -69,7 +73,7 @@ function spawnFakeItem(slasher)
 end
 
 -- Spawn the clones used to teleport (need to add Stage5 Behavior)
-function spawnTpClone(pos, ang)
+function SLASHER.spawnTpClone(pos, ang)
 	local clone = ents.Create("sc_x_clone")
 
 	clone:SetPos(pos)
@@ -80,16 +84,16 @@ function spawnTpClone(pos, ang)
 	clone:Spawn()
 	clone:Activate()
 
-	clone:SetVar("flTicks", SLASHER.XSettings.Clones.flTicks)
-	clone:SetVar("flRange", SLASHER.XSettings.Clones.flRange)
-	clone:SetVar("clDuration", SLASHER.XSettings.Clones.duration)
+	clone:SetVar("flTicks", SLASHER.Config.Clones.flTicks)
+	clone:SetVar("flRange", SLASHER.Config.Clones.flRange)
+	clone:SetVar("clDuration", SLASHER.Config.Clones.duration)
 end
 
-function damagePlayer(slasher, victim, damage, damageForce)
+function SLASHER.damagePlayer(slasher, victim, damage, damageForce)
 	if victim:IsValid() and victim:IsPlayer() then
 		-- If the victim is one hit, we jumpscare them instead (need to add jumps)
 		-- Have to make my own jumpscare logic cause stock one wouldn't work
-		if victim:Health() <= SLASHER.XSettings.LMB.damage then
+		if victim:Health() <= SLASHER.Config.LMB.damage then
 			slasher:Freeze(true)
 
 			timer.Simple(SLASHER.JumpscareDuration, function()

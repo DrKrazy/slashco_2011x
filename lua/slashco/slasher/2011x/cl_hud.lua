@@ -1,6 +1,8 @@
 if not CLIENT then return end
 
--- Hud function, this is where you do cool UI shit
+-- Main hud function,this shit is gigantic so its getting its own file
+-- There is debug stuff at the end, you can remove it if you want
+
 local lmbTable = {
 	default = Material("slashco/ui/icons/slasher/2011x/LMB"),
 	["d/"] = Material("slashco/ui/icons/slasher/2011x/LMB_d")
@@ -50,7 +52,7 @@ function SLASHER.InitHud(_, hud)
 	-- Control Stuff
 	-- This was made to make creating the controls and editing them easier for the cooldown system
 	-- Do NOT make this a hash table, otherwise you won't be able to control the order in the hud
-	handleCooldowns = {
+	local handleCooldowns = {
 		{
 			key = "R",
 			controlName = "X_charge",
@@ -108,7 +110,7 @@ function SLASHER.InitHud(_, hud)
 		local fakeItemSelection = slasher:GetNWInt("2011xCurFakeItemSelection", 1)
 
 		if not slasher:GetNWBool("2011xLookingAtFakeItem") then
-			detonateText = tostring(SLASHER.XSettings.FakeItem.spawnList[fakeItemSelection].pingtype)
+			detonateText = tostring(SLASHER.Config.FakeItem.spawnList[fakeItemSelection].pingtype)
 		end
 
 		for _, control in ipairs(handleCooldowns) do
@@ -123,6 +125,7 @@ function SLASHER.InitHud(_, hud)
 			hud:SetControlText(control.key, text)
 		end
 
+		-- DEBUG STUFF, CAN BE REMOVED
 		if DEBUG then
 			local debugTable = {
 				{ seperator = " :", debugString = "", value = "Cooldowns"},

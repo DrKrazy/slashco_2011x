@@ -1,5 +1,7 @@
 if not CLIENT then return end
 
+-- Hooks triggered on the clients, mainly used for the fake chase light
+
 hook.Add("Think", "FakeChaseLight", function()
     for _, slasher in ipairs(team.GetPlayers(TEAM_SLASHER)) do
         if not slasher:GetNWBool("InSlasherChaseMode") then return end
@@ -7,9 +9,9 @@ hook.Add("Think", "FakeChaseLight", function()
 
         if dlight then
             dlight.pos = slasher:LocalToWorld(Vector(0,0,40))
-            dlight.r = SLASHER.XSettings.chaseColor.r
-            dlight.g = SLASHER.XSettings.chaseColor.g
-            dlight.b = SLASHER.XSettings.chaseColor.b
+            dlight.r = SLASHER.Config.chaseColor.r
+            dlight.g = SLASHER.Config.chaseColor.g
+            dlight.b = SLASHER.Config.chaseColor.b
             dlight.brightness = 6
 
             dlight.Decay = 1000

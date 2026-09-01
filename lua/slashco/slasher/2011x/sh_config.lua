@@ -1,4 +1,40 @@
--- 2011X Specific Parameters (sorry to whoever wants to balance this fucking slasher lmfao)
+--[[ 
+	Main configuration file for 2011x
+ ]]
+
+-- Stock SlashCo parameters
+SLASHER.Name = "X_name"
+SLASHER.Aliases = {
+	"GOD",
+	"X",
+	"THE FIRST",
+}
+
+SLASHER.Class = SlashCo.SlasherClass.Unknown
+SLASHER.DangerLevel = SlashCo.DangerLevel.Unknown
+SLASHER.IsSelectable = true
+SLASHER.Model = "models/slashco/slashers/2011x/2011x.mdl"
+SLASHER.GasCanMod = 0
+SLASHER.KillDelay = 2
+SLASHER.ProwlSpeed = 290
+SLASHER.ChaseSpeed = SLASHER.ProwlSpeed
+SLASHER.Perception = 1.0
+SLASHER.Eyesight = 3
+SLASHER.KillDistance = 70
+
+SLASHER.JumpscareDuration = 1
+SLASHER.ChaseMusic = "slashco/slasher/2011x/2011x_tempChase.mp3"
+SLASHER.ChaseRange = 300
+SLASHER.ChaseRadius = 0.1
+
+SLASHER.Description = "X_desc"
+SLASHER.ProTip = "X_tip"
+SLASHER.SpeedRating = "★★★★★"
+SLASHER.EyeRating = "★★★★★"
+SLASHER.DiffRating = "★★★☆☆"
+SLASHER.StunTime = 1
+
+-- 2011x ability specific parameters
 SLASHER.Config = {
 	-- Normal settings
 	chaseColor = Color(38, 0, 255),
@@ -54,6 +90,8 @@ SLASHER.Config = {
 		expDamage = 5,						-- Amount of damage it does when it explodes
 		expKnockback = 25,						-- Force of the explosion (used to apply velocity to players)
 
+		-- Slowness effect applied dynamically when a survivor detonates a fake item
+		-- Duration is dependent on the distance form the survivor to the slasher
 		Slowness = {
 			active = true,
 			minDuration = 1,
