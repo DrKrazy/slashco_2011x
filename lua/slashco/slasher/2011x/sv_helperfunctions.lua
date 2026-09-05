@@ -3,7 +3,7 @@
 ]]
 
 -- Logic to make either survivor or 2011x say a voice line (might be refined later)
-function SLASHER.sayPrompt(ply, input)
+function sayPrompt(ply, input)
 	if ply:Team() == TEAM_SURVIVOR then
 		ply:EmitSound("slashco/survivor/voice/prompt_" .. input .. math.random(1,3) .. ".mp3")
 	elseif ply:Team() == TEAM_SLASHER and ply:GetNWString("Slasher") == "2011x" then
@@ -20,7 +20,7 @@ function SLASHER.sayPrompt(ply, input)
 end
 
 -- Getting the voiceline suffix by ping type for fake items, used for survivors mainly
-function SLASHER.GetVoiceByPingType(pingtype)
+function GetVoiceByPingType(pingtype)
 	for _, item in ipairs(SLASHER.Config.FakeItem.spawnList) do
 		if item.pingtype == pingtype then
 			return item.vlInput

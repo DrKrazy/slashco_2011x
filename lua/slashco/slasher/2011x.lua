@@ -1,4 +1,6 @@
 SLASHER = {}
+
+-- Enable to see a bunch of debug information that was used during this slasher's development
 DEBUG = true
 
 --[[
@@ -27,13 +29,11 @@ function SLASHER.OnSpawn(slasher)
 	slasher:SetNWFloat("2011xLMBCooldown", 0)
 	slasher:SetNWFloat("2011xFakeItemCooldown", 0)
 	slasher:SetNWFloat("2011xChargeCooldown")
-	slasher:SetNWFloat("2011xTpToCloneCooldown", 0)
-	slasher:SetNWFloat("2011xDetonateCooldown", 0)
+	slasher:SetNWFloat("2011xTriggerAimCooldown", 0)
 
 	slasher:SetNWFloat("2011xGlobalCooldown", 0)
 
 	slasher:SetNWBool("2011xCharging", false )
-	slasher:GetNWBool("2011xCanDetonate", false)
 	slasher:SetNWInt("2011xCurFakeItemSelection", 1)
 
 	slasher.canCrash = false
@@ -61,7 +61,7 @@ function SLASHER.Animator(ply)
 	if ply:IsOnGround() then
 		if charging then
 			ply.CalcIdeal = ACT_HL2MP_RUN
-			ply.CalcSeqOverride = ply:LookupSequence("charge_run")
+			ply.CalcSeqOverride = ply:LookupSequence("chargeangy_run")
 		else
 			ply.CalcIdeal = ACT_HL2MP_WALK
 			ply.CalcSeqOverride = ply:LookupSequence("run")

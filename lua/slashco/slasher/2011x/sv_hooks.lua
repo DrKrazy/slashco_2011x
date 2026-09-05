@@ -14,14 +14,15 @@ end)
 
 hook.Add("SlashCo:OnPing", "2011xPingStuff", function(pingInfo)
     if not istable(pingInfo) then return end -- Should always be a table but just in case
-    PrintTable(pingInfo)
+    if DEBUG then PrintTable(pingInfo) end
 
     local pingingPlayer = pingInfo.Player
-    if isnumber(pingingPlayer) then pingingPlayer = Entity(pingingPlayer) end
-    if not IsValid(pingingPlayer) or not pingingPlayer:IsPlayer() then return end
-
     local entity = pingInfo.Entity
+
+    if isnumber(pingingPlayer) then pingingPlayer = Entity(pingingPlayer) end
     if isnumber(entity) then entity = Entity(entity) end
+
+    if not IsValid(pingingPlayer) or not pingingPlayer:IsPlayer() then return end
 
     -- This section of code is to properly detect when you ping a slasher, as for some fucking reason it wouldn't put the entity in pinginfo.Entity
     local traced = pingingPlayer:GetEyeTrace().Entity
@@ -32,39 +33,26 @@ hook.Add("SlashCo:OnPing", "2011xPingStuff", function(pingInfo)
     end
 
     -- Fake item stuff
-    if IsValid(entity) and entity:GetClass() == "sc_x_fakeitem" then
+    if IsValid(entity) and entity:GetClass() == "sc_x_fakeitem" and pingInfo.Team == TEAM_SURVIVOR then
+        local voiceline = GetVoiceByPingType(pingInfo.Type)
+
         -- If a survivor pings the fake item, we make them say the line and return
-        if pingInfo.Team == TEAM_SURVIVOR then
-            local voiceLine = SLASHER.GetVoiceByPingType(pingInfo.Type)
-
-            if voiceLine then
-                SLASHER.sayPrompt(pingingPlayer, voiceLine)
-            end
-            return true
+        if voiceline then
+            sayPrompt(pingingPlayer, voiceline)
         end
-
-        -- If 2011x pings a fake item and it can blow up, we blow it up (we don't care if its another 20xx's fake item, they're shared)
-        if pingInfo.Team == TEAM_SLASHER and pingingPlayer:GetNWBool("2011xCanDetonate", false) then
-            entity:SetVar("expDamage", SLASHER.Config.FakeItem.Detonate.expDamageOverride)
-            entity:SetVar("slowActive", false)
-            entity:Explode()
-
-            pingingPlayer:SetNWFloat("2011xDetonateCooldown", SLASHER.Config.FakeItem.Detonate.cooldown)
-            pingingPlayer:SetNWFloat("2011xGlobalCooldown", SLASHER.Config.FakeItem.Detonate.globalCooldown)
-        end
+        return true
     end
 
     -- Used for 2011x special interactions
-    local returnTarget = pingInfo.Type
-    if IsValid(entity) then returnTarget = entity:GetClass() end
+    local returnTarget = IsValid(entity) and entity:GetClass() or pingInfo.Type
 
-    local pingVoiceLine = SLASHER.Config.specialInteractions[string.lower(returnTarget)]
-    if not pingVoiceLine then return end	-- If there's no voiceline at all then we return
+    local voiceline = SLASHER.Config.specialInteractions[string.lower(returnTarget or "")]
+    if not voiceline then return end	-- If there's no voiceline at all then we return
 
-    if istable(pingVoiceLine) then
-        pingVoiceLine = pingVoiceLine[math.random(#pingVoiceLine)]
+    if istable(voiceline) then
+        voiceline = voiceline[math.random(#voiceline)]
     end
-    SLASHER.sayPrompt(pingingPlayer, pingVoiceLine)
+    sayPrompt(pingingPlayer, voiceline)
 
     return false
 end)

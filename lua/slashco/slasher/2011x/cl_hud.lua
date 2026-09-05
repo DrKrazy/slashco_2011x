@@ -3,31 +3,29 @@ if not CLIENT then return end
 -- Main hud function,this shit is gigantic so its getting its own file
 -- There is debug stuff at the end, you can remove it if you want
 
-local lmbTable = {
-	default = Material("slashco/ui/icons/slasher/2011x/LMB"),
-	["d/"] = Material("slashco/ui/icons/slasher/2011x/LMB_d")
-}
-
-local rmbTable = {
-	default = Material("slashco/ui/icons/slasher/2011x/fakeitem"),
-	["d/"] = Material("slashco/ui/icons/slasher/2011x/fakeitem_d")
-}
-
-local mwTable = {
-	default = Material("slashco/ui/icons/slasher/2011x/"),
-	["d/"] = Material("slashco/ui/icons/slasher/2011x/_d"),
-	["detonate"] = Material("slashco/ui/icons/slasher/2011x/detonate"),
-	["d/detonate"] = Material("slashco/ui/icons/slasher/2011x/detonate_d")
-}
-
-local fTable = {
-	default = Material("slashco/ui/icons/slasher/2011x/tptoclone"),
-	["d/"] = Material("slashco/ui/icons/slasher/2011x/tptoclone_d")
-}
-
-local rTable = {
-	default = Material("slashco/ui/icons/slasher/2011x/charge"),
-	["d/"] = Material("slashco/ui/icons/slasher/2011x/charge_d")
+local iconTable = {
+	lmbTable = {
+		default = Material("slashco/ui/icons/slasher/2011x/LMB"),
+		["d/"] = Material("slashco/ui/icons/slasher/2011x/LMB_d")
+	},
+	rmbTable = {
+		default = Material("slashco/ui/icons/slasher/2011x/fakeitem"),
+		["d/"] = Material("slashco/ui/icons/slasher/2011x/fakeitem_d")
+	},
+	mwTable = {
+		default = Material("slashco/ui/icons/slasher/2011x/"),
+		["d/"] = Material("slashco/ui/icons/slasher/2011x/_d")
+	},
+	fTable = {
+		default = Material("slashco/ui/icons/slasher/2011x/tptoclone"),
+		["d/"] = Material("slashco/ui/icons/slasher/2011x/tptoclone_d"),
+		["detonate"] = Material("slashco/ui/icons/slasher/2011x/detonate"),
+		["d/detonate"] = Material("slashco/ui/icons/slasher/2011x/detonate_d")
+	},
+	rTable = {
+		default = Material("slashco/ui/icons/slasher/2011x/charge"),
+		["d/"] = Material("slashco/ui/icons/slasher/2011x/charge_d")
+	}
 }
 
 function SLASHER.InitHud(_, hud)
@@ -58,23 +56,23 @@ function SLASHER.InitHud(_, hud)
 			controlName = "X_charge",
 			netVarCD = "2011xChargeCooldown",
 			netVarTie = "2011xCanCharge",
-			icon = rTable,
+			icon = iconTable.rTable,
 			preventOverwrite = false,
 		},
 		{
 			key = "F",
-			controlName = "X_teleport",
-			netVarCD = "2011xTpToCloneCooldown",
-			netVarTie = "2011xCanTpToClone",
-			icon = fTable,
+			controlName = "X_aimAtBelonging",
+			netVarCD = "2011xTriggerAimCooldown",
+			netVarTie = "2011xCanTriggerAim",
+			icon = iconTable.fTable,
 			preventOverwrite = false,
 		},
 		{
 			key = "MOUSEWHEEL",
-			controlName = "X_detonate",
-			netVarCD = "2011xDetonateCooldown",
-			netVarTie = "2011xCanDetonate",
-			icon = mwTable,
+			controlName = "X_itemSelection",
+			netVarCD = "",
+			netVarTie = "2011xCanFakeItem",
+			icon = iconTable.mwTable,
 			preventOverwrite = true,
 		},
 		{
@@ -82,7 +80,7 @@ function SLASHER.InitHud(_, hud)
 			controlName = "X_fakeItem",
 			netVarCD = "2011xFakeItemCooldown",
 			netVarTie = "2011xCanFakeItem",
-			icon = rmbTable,
+			icon = iconTable.rmbTable,
 			preventOverwrite = false,
 		},
 		{
@@ -90,7 +88,7 @@ function SLASHER.InitHud(_, hud)
 			controlName = "kill survivor",
 			netVarCD = "2011xLMBCooldown",
 			netVarTie = "2011xCanLMB",
-			icon = lmbTable,
+			icon = iconTable.lmbTable,
 			preventOverwrite = false,
 		},
 	}
@@ -105,19 +103,14 @@ function SLASHER.InitHud(_, hud)
 	-- This is mainly used to update the hud for the cooldowns
 
 	function hud.AlsoThink()
-		local detonateText = "X_detonate"
 		local globalCooldown = slasher:GetNWFloat("2011xGlobalCooldown", 0)
 		local fakeItemSelection = slasher:GetNWInt("2011xCurFakeItemSelection", 1)
-
-		if not slasher:GetNWBool("2011xLookingAtFakeItem") then
-			detonateText = tostring(SLASHER.Config.FakeItem.spawnList[fakeItemSelection].pingtype)
-		end
 
 		for _, control in ipairs(handleCooldowns) do
 			local cooldown = math.max(slasher:GetNWFloat(control.netVarCD, 0), globalCooldown)
 
 			local controlName = control.controlName
-			if control.preventOverwrite then controlName = detonateText end
+			if control.preventOverwrite then controlName = tostring(SLASHER.Config.FakeItem.spawnList[fakeItemSelection].pingtype) end
 
 			local text = SlashCo.LangTable[controlName]
 			if cooldown > 0 then text = string.format( "[ %.1f ] %s", cooldown, text ) end
@@ -132,8 +125,7 @@ function SLASHER.InitHud(_, hud)
 				{ seperator = " : ", debugString = "2011xLMBCooldown", value = math.Clamp(slasher:GetNWFloat("2011xLMBCooldown", 0), 0, math.huge)},
 				{ seperator = " : ", debugString = "2011xFakeItemCooldown", value = math.Clamp(slasher:GetNWFloat("2011xFakeItemCooldown", 0), 0, math.huge)},
 				{ seperator = " : ", debugString = "2011xChargeCooldown", value = math.Clamp(slasher:GetNWFloat("2011xChargeCooldown", 0), 0, math.huge)},
-				{ seperator = " : ", debugString = "2011xTpToCloneCooldown", value = math.Clamp(slasher:GetNWFloat("2011xTpToCloneCooldown", 0), 0, math.huge)},
-				{ seperator = " : ", debugString = "2011xDetonateCooldown", value = math.Clamp(slasher:GetNWFloat("2011xDetonateCooldown", 0), 0, math.huge)},
+				{ seperator = " : ", debugString = "2011xTriggerAimCooldown", value = math.Clamp(slasher:GetNWFloat("2011xTriggerAimCooldown", 0), 0, math.huge)},
 				{ seperator = " : ", debugString = "2011xGlobalCooldown", value = math.Clamp(slasher:GetNWFloat("2011xGlobalCooldown", 0), 0, math.huge)},
 
 				{ seperator = "", debugString = "", value = ""},
@@ -141,7 +133,6 @@ function SLASHER.InitHud(_, hud)
 				{ seperator = " : ", debugString = "2011xCanFakeItem", value = slasher:GetNWBool("2011xCanFakeItem", false)},
 				{ seperator = " : ", debugString = "2011xCanCharge", value = slasher:GetNWBool("2011xCanCharge", false)},
 				{ seperator = " : ", debugString = "2011xCanTpToClone", value = slasher:GetNWBool("2011xCanTpToClone", false)},
-				{ seperator = " : ", debugString = "2011xCanDetonate", value = slasher:GetNWBool("2011xCanDetonate", false)},
 				{ seperator = " : ", debugString = "2011xLookingAtFakeItem", value = slasher:GetNWBool("2011xLookingAtFakeItem", false)},
 
 				{ seperator = "", debugString = "", value = ""},

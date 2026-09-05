@@ -103,7 +103,7 @@ SLASHER.Config = {
 
 		-- Sub ability of fake items, used when they're detonated via ping
 		Detonate = {
-			cooldown = 0,				-- Cooldown between this ability's uses
+			cooldown = 4,				-- Cooldown between this ability's uses
 			globalCooldown = 0,			-- Global cooldown on all abilities when used
 
 			expDamageOverride = 999		-- The damage the fake item explosion will do if detonated by the 2011x
@@ -138,7 +138,7 @@ SLASHER.Config = {
 	-- When looking at a clone from anywhere i nthe map you can swap positions with it, usefull for ambushes
 	TpToClone = {
 		globalCooldown = 0,				-- Global cooldown on all abilities when used (prevents being able to instantly do stuff after manifesting)
-		cooldown = 0,					-- Cooldown between this ability's uses
+		cooldown = 2,					-- Cooldown between this ability's uses
 
 		tpRange = 2048					-- Maximum range of the teleport (clones farther can't be teleport to)
 	},

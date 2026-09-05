@@ -8,28 +8,20 @@ function SLASHER.OnTickBehaviour(slasher)
 	local final_eyesight = SLASHER.Eyesight
 	local final_perception = SLASHER.Perception
 
-	-- This is used to detect when the slasher is looking at a clone to teleport to it
+	-- This is used to detect when the slasher is looking at a clone or fakeitem to trigger
 	local traceClone = util.TraceLine(
 		{
 			start = slasher:EyePos(),
 			endpos = slasher:EyePos() + slasher:GetAimVector() * SLASHER.Config.TpToClone.tpRange,
 			ignoreworld = true,
-			filter = { "sc_x_clone" },
+			filter = { "sc_x_clone", "sc_x_fakeitem"},
 			whitelist = true
 		}
 	)
 
-	-- Used for the MOUSE WHEEL text change to "Detonate" for fake items
-	local traceMisc = slasher:GetEyeTrace()
-
-	-- If 2011x is looking at a fake item (used for detonate)
-	slasher:SetNWBool("2011xLookingAtFakeItem",
-		traceMisc.Entity:IsValid()
-		and traceMisc.Entity:GetClass() == "sc_x_fakeitem"
-	)
-
 	-- Custom start chase logic
 	-- Unironically very ass, will improve later
+	local traceMisc = slasher:GetEyeTrace()
 	if (IsValid(traceMisc.Entity) and
 		traceMisc.Entity:GetClass() == "player" and
 		traceMisc.Entity:Team() == TEAM_SURVIVOR and
@@ -44,8 +36,7 @@ function SLASHER.OnTickBehaviour(slasher)
 	if (slasher:GetNWFloat("2011xLMBCooldown") > 0) then slasher:SetNWFloat("2011xLMBCooldown", slasher:GetNWFloat("2011xLMBCooldown") - FrameTime()) end
 	if (slasher:GetNWFloat("2011xFakeItemCooldown") > 0) then slasher:SetNWFloat("2011xFakeItemCooldown", slasher:GetNWFloat("2011xFakeItemCooldown") - FrameTime()) end
 	if (slasher:GetNWFloat("2011xChargeCooldown") > 0) then slasher:SetNWFloat("2011xChargeCooldown", slasher:GetNWFloat("2011xChargeCooldown") - FrameTime()) end
-	if (slasher:GetNWFloat("2011xTpToCloneCooldown") > 0) then slasher:SetNWFloat("2011xTpToCloneCooldown", slasher:GetNWFloat("2011xTpToCloneCooldown") - FrameTime()) end
-	if (slasher:GetNWFloat("2011xDetonateCooldown") > 0) then slasher:SetNWFloat("2011xDetonateCooldown", slasher:GetNWFloat("2011xDetonateCooldown") - FrameTime()) end
+	if (slasher:GetNWFloat("2011xTriggerAimCooldown") > 0) then slasher:SetNWFloat("2011xTriggerAimCooldown", slasher:GetNWFloat("2011xTriggerAimCooldown") - FrameTime()) end
 	if (slasher:GetNWFloat("2011xGlobalCooldown") > 0) then slasher:SetNWFloat("2011xGlobalCooldown", slasher:GetNWFloat("2011xGlobalCooldown") - FrameTime()) end
 
 	-- Global conditional for if you can use each ability or not,
@@ -74,18 +65,11 @@ function SLASHER.OnTickBehaviour(slasher)
 		and not stunned
 	)
 
-	slasher:SetNWBool("2011xCanTpToClone",
-		slasher:GetNWFloat("2011xTpToCloneCooldown") <= 0
+	slasher:SetNWBool("2011xCanTriggerAim",
+		slasher:GetNWFloat("2011xTriggerAimCooldown") <= 0
 		and not globalCooldown
 		and not stunned
 		and traceClone.Entity:IsValid()
-		and traceClone.Entity:GetClass() == "sc_x_clone"
-	)
-
-	slasher:SetNWBool("2011xCanDetonate",
-		slasher:GetNWFloat("2011xDetonateCooldown") <= 0
-		and not globalCooldown
-		and not stunned
 	)
 
 	-- Logic for the charge, i wanna die this code fucking sucks
@@ -108,7 +92,7 @@ function SLASHER.OnTickBehaviour(slasher)
 					print("Charge damage: " .. finalDamage)
 				end
 				timer.Stop("2011xCharge_" .. slasher:EntIndex())
-				damagePlayer(slasher, ent, finalDamage, 200)
+				SLASHER.damagePlayer(slasher, ent, finalDamage, 200)
 			end
 		end
 

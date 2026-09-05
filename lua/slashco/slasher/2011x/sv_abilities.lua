@@ -1,4 +1,4 @@
---[[ 
+--[[
     Seperated the abilities themselves into their own file cause why not.
 ]]
 
@@ -11,11 +11,11 @@ function SLASHER.OnPrimaryFire(slasher)
 
 	slasher:LagCompensation(true)
 
-	local startpos = slasher:GetPos()
-	local dir = slasher:GetUp()
+	local startpos, dir = slasher:GetPos(), slasher:GetUp()
 
-	local maxs = Vector(SLASHER.Config.LMB.hitboxSize / 2, SLASHER.Config.LMB.hitboxSize / 2, SLASHER.Config.LMB.hitboxSize / 2)
-	local mins = Vector(-SLASHER.Config.LMB.hitboxSize / 2, -SLASHER.Config.LMB.hitboxSize / 2, -SLASHER.Config.LMB.hitboxSize / 2)
+	local mins, maxs =
+		Vector(-SLASHER.Config.LMB.hitboxSize / 2, -SLASHER.Config.LMB.hitboxSize / 2, -SLASHER.Config.LMB.hitboxSize / 2),
+		Vector(SLASHER.Config.LMB.hitboxSize / 2, SLASHER.Config.LMB.hitboxSize / 2, SLASHER.Config.LMB.hitboxSize / 2)
 
 	local tr = util.TraceHull({
 		start = startpos,
@@ -44,18 +44,15 @@ end
 -- Right click
 function SLASHER.OnSecondaryFire(slasher)
 	if not slasher:GetNWBool("2011xCanFakeItem") then return end
+	SLASHER.spawnFakeItem(slasher)
+
 	slasher:SetNWFloat("2011xFakeItemCooldown", SLASHER.Config.FakeItem.cooldown)
 	slasher:SetNWFloat("2011xGlobalCooldown", SLASHER.Config.FakeItem.globalCooldown or 0)
-	SLASHER.spawnFakeItem(slasher)
 end
 
 -- R
 function SLASHER.OnMainAbilityFire(slasher)
 	if not slasher:GetNWBool("2011xCanCharge") then return end
-	slasher:SetNWFloat("2011xChargeCooldown", SLASHER.Config.Charge.cooldown + SLASHER.Config.Charge.cooldown)
-
-	-- We do +1 here to prevent just being able to use an ability right after
-	slasher:SetNWFloat("2011xGlobalCooldown", SLASHER.Config.Charge.duration + (SLASHER.Config.Charge.globalCooldown or 0) + 1)
 
 	slasher.canCrash = false
 	slasher:SetFriction(SLASHER.Config.Charge.friction)
@@ -65,43 +62,64 @@ function SLASHER.OnMainAbilityFire(slasher)
 	timer.Create("2011xCharge_" .. slasher:EntIndex(), SLASHER.Config.Charge.duration, 1, function()
 		SLASHER.endCharge(slasher, false)
 	end)
+
+	slasher:SetNWFloat("2011xChargeCooldown", SLASHER.Config.Charge.cooldown + SLASHER.Config.Charge.cooldown)
+	slasher:SetNWFloat("2011xGlobalCooldown", SLASHER.Config.Charge.duration + (SLASHER.Config.Charge.globalCooldown or 0) + 1)
 end
 
 -- F
 function SLASHER.OnSpecialAbilityFire(slasher)
-	if not slasher:GetNWBool("2011xCanTpToClone") then return end
-	slasher:SetNWFloat("2011xTpToCloneCooldown", SLASHER.Config.TpToClone.cooldown)
-	slasher:SetNWFloat("2011xGlobalCooldown", SLASHER.Config.TpToClone.globalCooldown or 0)
+	if not slasher:GetNWBool("2011xCanTriggerAim") then return end
+	local cooldown, gCooldown = 0, 0
 
 	local trace = util.TraceLine(
 		{
 			start = slasher:EyePos(),
 			endpos = slasher:EyePos() + slasher:GetAimVector() * SLASHER.Config.TpToClone.tpRange,
 			ignoreworld = true,
-			filter = { "sc_x_clone" },
+			filter = { "sc_x_clone" , "sc_x_fakeitem"},
 			whitelist = true
 		}
 	)
 
 	-- We swap em
 	if (trace.Hit and trace.Entity:IsValid()) then
-		local tempPos, tempAngle = slasher:GetPos(), slasher:GetAngles()
+
 		local entity = trace.Entity
 
-		slasher:SetPos(trace.Entity:GetPos())
-		slasher:SetEyeAngles(trace.Entity:GetAngles())
+		if entity:GetClass() == "sc_x_clone" then
+			local tempPos, tempAngle = slasher:GetPos(), slasher:GetAngles()
 
-		entity:SetPos(tempPos)
-		entity:SetAngles(tempAngle)
+			slasher:SetPos(trace.Entity:GetPos())
+			slasher:SetEyeAngles(trace.Entity:GetAngles())
 
-		SlashCo.AudioSystem.PlaySound({
-			soundPath = "slashco/slasher/2011x/teleport.mp3",
-			identifier = "2011xTeleport" .. slasher:EntIndex(),
-			minDistance = 0,
-			maxDistance = 2000,
-			entity = slasher,
-			volume = 0.5,
-			fadeIn = 0,
-		})
+			entity:SetPos(tempPos)
+			entity:SetAngles(tempAngle)
+
+			SlashCo.AudioSystem.PlaySound({
+				soundPath = "slashco/slasher/2011x/teleport.mp3",
+				identifier = "2011xTeleport" .. slasher:EntIndex(),
+				minDistance = 0,
+				maxDistance = 2000,
+				entity = slasher,
+				volume = 0.5,
+				fadeIn = 0,
+			})
+
+			cooldown =  SLASHER.Config.TpToClone.cooldown
+			gCooldown =  SLASHER.Config.TpToClone.globalCooldown
+
+		elseif entity:GetClass() == "sc_x_fakeitem" then
+
+			entity:SetVar("expDamage", SLASHER.Config.FakeItem.Detonate.expDamageOverride)
+			entity:SetVar("slowActive", false)
+			entity:Explode()
+
+			cooldown = SLASHER.Config.FakeItem.Detonate.cooldown
+			gCooldown = SLASHER.Config.FakeItem.Detonate.globalCooldown
+		end
+
+		slasher:SetNWFloat("2011xTriggerAimCooldown", cooldown)
+		slasher:SetNWFloat("2011xGlobalCooldown", gCooldown)
 	end
 end
