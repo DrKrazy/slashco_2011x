@@ -28,7 +28,7 @@ hook.Add("PreDrawHalos", "CloneHighlight", function()
     local lookingClones = {}
 
     for _, clone in ipairs(ents.FindByClass("sc_x_clone")) do
-        if clone:GetPos():Distance(ply:GetPos()) < 250 then
+        if clone:GetPos():Distance(ply:GetPos()) < SLASHER.Config.Clones.detectionRange then
             table.insert(lookingClones, clone)
         end
     end

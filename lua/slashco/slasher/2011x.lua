@@ -37,6 +37,9 @@ function SLASHER.OnSpawn(slasher)
 	slasher:SetNWBool("2011xCharging", false )
 	slasher:SetNWInt("2011xCurFakeItemSelection", 1)
 
+	slasher:SetEyeSight(SLASHER.Eyesight)
+	slasher:SetPerception(SLASHER.Perception)
+
 	slasher.canCrash = false
 	-- Please dont touch anything between these two comments
 
@@ -194,4 +197,3 @@ for _, filename in pairs(file.Find(slasherPath .. "/*.lua", "LUA")) do
 end
 
 SlashCo.RegisterSlasher(SLASHER, "2011x")
-SLASHER = nil

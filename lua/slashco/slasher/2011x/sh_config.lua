@@ -25,7 +25,9 @@ SLASHER.KillDistance = 70
 SLASHER.JumpscareDuration = 1
 SLASHER.ChaseMusic = "slashco/slasher/2011x/2011x_tempChase.mp3"
 SLASHER.ChaseRange = 300
-SLASHER.ChaseRadius = 0.1
+SLASHER.ChaseRange = 300
+SLASHER.ChaseFOV = 90
+SLASHER.ChaseRadius = math.cos(math.rad(SLASHER.ChaseFOV))	-- That shit is weird, like why
 
 SLASHER.Description = "X_desc"
 SLASHER.ProTip = "X_tip"
@@ -59,7 +61,7 @@ SLASHER.Config = {
 		maxAmount = 10,					-- Amount of Clones that can spawn
 		duration = nil,					-- Duration of a clone until it dissapears (nil for infinite)
 
-		detectionRange = 200,			-- Clone's detection range (used for outlining and apperance range for the survivor)
+		detectionRange = 500,			-- Clone's detection range (used for outlining range for the survivor)
 		flRange = 200,					-- Range for the flishlight to work against the clones
 		flTicks = 2						-- How much time (in seconds) you need to keep your flashlight on the clone for it to dissapear
 	},
@@ -75,7 +77,7 @@ SLASHER.Config = {
 		hitboxSize = 120,
 
 		damage = 35,
-		windup = 0.5,
+		windUp = 0.5,
 	},
 
 	-- Right Click (spawns an explosive item that explodes on use or if pinged by 2011x)

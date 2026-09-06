@@ -9,36 +9,38 @@ function SLASHER.OnPrimaryFire(slasher)
 	slasher:SetNWFloat("2011xLMBCooldown", SLASHER.Config.LMB.cooldown)
 	slasher:SetNWFloat("2011xGlobalCooldown", SLASHER.Config.LMB.globalCooldown or 0)
 
-	slasher:LagCompensation(true)
+	timer.Simple(SLASHER.Config.LMB.windUp, function ()
+		slasher:LagCompensation(true)
 
-	local startpos, dir = slasher:GetPos(), slasher:GetUp()
+		local startpos, dir = slasher:GetPos(), slasher:GetUp()
 
-	local mins, maxs =
-		Vector(-SLASHER.Config.LMB.hitboxSize / 2, -SLASHER.Config.LMB.hitboxSize / 2, -SLASHER.Config.LMB.hitboxSize / 2),
-		Vector(SLASHER.Config.LMB.hitboxSize / 2, SLASHER.Config.LMB.hitboxSize / 2, SLASHER.Config.LMB.hitboxSize / 2)
+		local mins, maxs =
+			Vector(-SLASHER.Config.LMB.hitboxSize / 2, -SLASHER.Config.LMB.hitboxSize / 2, -SLASHER.Config.LMB.hitboxSize / 2),
+			Vector(SLASHER.Config.LMB.hitboxSize / 2, SLASHER.Config.LMB.hitboxSize / 2, SLASHER.Config.LMB.hitboxSize / 2)
 
-	local tr = util.TraceHull({
-		start = startpos,
-		endpos = startpos + dir * SLASHER.Config.LMB.hitboxSize,
-		maxs = maxs,
-		mins = mins,
+		local tr = util.TraceHull({
+			start = startpos,
+			endpos = startpos + dir * SLASHER.Config.LMB.hitboxSize,
+			maxs = maxs,
+			mins = mins,
 
-		-- I do this cause player could use fake items to eat the trace, preventing damage
-		-- Im sorry but this is dead ass the only way i can think of to properly filter player but not self
-		-- I know it looks inverted but i promise it works
-		filter = function(ent)
-			return ent:IsPlayer() and ent ~= slasher
-		end,
+			-- I do this cause player could use fake items to eat the trace, preventing damage
+			-- Im sorry but this is dead ass the only way i can think of to properly filter player but not self
+			-- I know it looks inverted but i promise it works
+			filter = function(ent)
+				return ent:IsPlayer() and ent ~= slasher
+			end,
 
-		ignoreworld = true,
-	})
+			ignoreworld = true,
+		})
 
-	slasher:LagCompensation(false)
+		slasher:LagCompensation(false)
 
-	local target = tr.Entity
-	if target:IsValid() and target:Team() == TEAM_SURVIVOR then
-		SLASHER.damagePlayer(slasher, target, SLASHER.Config.LMB.damage, SLASHER.Config.LMB.knockback)
-	end
+		local target = tr.Entity
+		if target:IsValid() and target:Team() == TEAM_SURVIVOR then
+			SLASHER.damagePlayer(slasher, target, SLASHER.Config.LMB.damage, SLASHER.Config.LMB.knockback)
+		end
+	end)
 end
 
 -- Right click
