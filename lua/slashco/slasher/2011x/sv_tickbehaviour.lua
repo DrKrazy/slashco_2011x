@@ -9,7 +9,7 @@ function SLASHER.OnTickBehaviour(slasher)
 	local final_perception = SLASHER.Perception
 
 	-- This is used to detect when the slasher is looking at a clone or fakeitem to trigger
-	local traceClone = util.TraceLine(
+	local traceAim = util.TraceLine(
 		{
 			start = slasher:EyePos(),
 			endpos = slasher:EyePos() + slasher:GetAimVector() * SLASHER.Config.TpToClone.tpRange,
@@ -18,6 +18,16 @@ function SLASHER.OnTickBehaviour(slasher)
 			whitelist = true
 		}
 	)
+
+	for _, ply in ipairs(team.GetPlayers(TEAM_SURVIVOR)) do
+		local distances = {}
+		for _, clone in ipairs(ents.FindByClass("sc_x_clone")) do
+			table.insert(distances, clone:GetPos():Distance(ply:GetPos()))
+		end
+		ply:SetNWBool("2011xCloneSeen", math.min(unpack(distances)) <= 250)
+	end
+
+
 
 	-- Custom start chase logic
 	-- Unironically very ass, will improve later
@@ -69,7 +79,7 @@ function SLASHER.OnTickBehaviour(slasher)
 		slasher:GetNWFloat("2011xTriggerAimCooldown") <= 0
 		and not globalCooldown
 		and not stunned
-		and traceClone.Entity:IsValid()
+		and traceAim.Entity:IsValid()
 	)
 
 	-- Logic for the charge, i wanna die this code fucking sucks

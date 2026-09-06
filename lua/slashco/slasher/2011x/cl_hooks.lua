@@ -20,3 +20,18 @@ hook.Add("Think", "FakeChaseLight", function()
         end
     end
 end)
+
+hook.Add("PreDrawHalos", "CloneHighlight", function()
+    local ply = LocalPlayer()
+    if not IsValid(ply) or ply:Team() ~= TEAM_SURVIVOR then return end
+
+    local lookingClones = {}
+
+    for _, clone in ipairs(ents.FindByClass("sc_x_clone")) do
+        if clone:GetPos():Distance(ply:GetPos()) < 250 then
+            table.insert(lookingClones, clone)
+        end
+    end
+
+    halo.Add(lookingClones, Color(255,0,0), 1, 1, 2, nil, true)
+end)

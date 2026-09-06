@@ -26,24 +26,24 @@ if SERVER then
 	end
 
 	function ENT:Think()
-	-- PrintTable(self:GetOwner():GetTable())
 		-- If the flashlight counter or duration reaches below 1, we kill it (this is cause doing below or equal 0 gives it an extra second and it was angering me)
 		-- the "or 2" for the duration is here for if its nil ( its for infinite duration, dw about it :D )
 
 		if (self.flTicks < 1 or (self.clDuration or 2) < 1) then
 			local effect = EffectData()
 			effect:SetOrigin(self:GetPos() + Vector(0,0,40))
-			effect:SetScale(600)
 			util.Effect("BloodImpact", effect)
 			self:Remove()
 		end
 
 		-- I have no idea how to not make this suck absolute balls, sorry to whoever wants to make this better
 		for _, ply in ipairs(team.GetPlayers(TEAM_SURVIVOR)) do
-			if ply:GetEyeTrace().Entity ~= self then continue end
 			if not IsValid(ply) or not ply:Alive() then continue end
-			if ply:GetPos():DistToSqr(self:GetPos()) > self.flRange * self.flRange then continue end
-			if not ply:GetNW2Bool("DynamicFlashlight") then continue end
+
+			-- Flashlight logic
+			if ply:GetPos():DistToSqr(self:GetPos()) > self.flRange * self.flRange
+			or not ply:GetNW2Bool("DynamicFlashlight")
+			or ply:GetEyeTrace().Entity ~= self then continue end
 
 			self.flTicks = self.flTicks - FrameTime()
 		end
@@ -56,11 +56,11 @@ if SERVER then
 	end
 
 	-- This is done to prevent warnings and shit in the console due to this entity being a next bot
-	-- Will be used in the future tho 
+	-- Will be used in the future tho
 	function ENT:RunBehaviour()
+		local sequence = self:GetSequenceList()[math.random(#self:GetSequenceList())]
 		while true do
-			self:StartActivity(ACT_IDLE)
-			self:PlaySequenceAndWait("idle")
+			self:PlaySequenceAndWait(sequence)
 
 			coroutine.yield()
 		end
@@ -72,21 +72,9 @@ if CLIENT then
 	local chaseColor = Color(38, 0, 255)
 
 	function ENT:Think()
-		local client = GameData.LocalPlayer
+		local client = LocalPlayer()
 
-		if not IsValid(client) or not IsValid(self) then return end
-		if (client:Team() ~= TEAM_SURVIVOR) then return end
-
-		local headbone = self:LookupBone("bip_head")
-		if headbone then
-			local direction = self:WorldToLocal(client:EyePos() + Vector(0,0,-40))
-
-			local ang = direction:Angle()
-			ang = Angle(ang.y, 0, ang.p)
-
-
-			self:ManipulateBoneAngles(headbone, ang, false)
-		end
+		if not IsValid(client) or not IsValid(self) or client:Team() ~= TEAM_SURVIVOR then return end
 
 		local dlight = DynamicLight(self:EntIndex())
 		if dlight then
@@ -100,7 +88,25 @@ if CLIENT then
 			dlight.Size = size
 			dlight.DieTime = CurTime()
 		end
+
+		local headbone = self:LookupBone("bip_head")
+
+		if headbone then
+			local direction = self:WorldToLocal(client:EyePos() - Vector(0,0,40))
+
+			local ang = direction:Angle()
+			ang = client:GetNWBool("2011xCloneSeen") and Angle(ang.y, 0, ang.p) or angle_zero
+
+			self:ManipulateBoneAngles(headbone, ang, false)
+		end
 	end
+
+	hook.Add("PreDrawHalos", "CloneHighlight", function()
+		local ply = LocalPlayer()
+		if not IsValid(ply) or ply:Team() ~= TEAM_SURVIVOR or not ply:GetNWBool("2011xCloneSeen") then return end
+
+		halo.Add({ply}, Color(255,0,0), 1, 1, 2, nil, true)
+	end)
 
 	function ENT:Draw()
 		self:DrawModel()

@@ -1,3 +1,4 @@
+-- This has to be non local for the loader to properly work
 SLASHER = {}
 
 -- Enable to see a bunch of debug information that was used during this slasher's development
@@ -65,6 +66,11 @@ function SLASHER.Animator(ply)
 		else
 			ply.CalcIdeal = ACT_HL2MP_WALK
 			ply.CalcSeqOverride = ply:LookupSequence("run")
+
+			if ply:GetVelocity():LengthSqr() == 0 then
+				ply.CalcIdeal = ACT_IDLE
+			ply.CalcSeqOverride = ply:LookupSequence("idle")
+			end
 		end
 	else
 		ply.CalcSeqOverride = ply:LookupSequence("float")
@@ -188,3 +194,4 @@ for _, filename in pairs(file.Find(slasherPath .. "/*.lua", "LUA")) do
 end
 
 SlashCo.RegisterSlasher(SLASHER, "2011x")
+SLASHER = nil

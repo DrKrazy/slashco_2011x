@@ -5,39 +5,6 @@ ENT.Base = "sc_baseitem"
 ENT.PrintName = "Test Entity"
 ENT.Spawnable = true
 
--- Replaces the player's ragdoll and adds velocity to it, it's just usefull
-function replaceRagdoll(self, player, ragdollModel, expKnockback)
-	local ragdoll = player.DeadBody
-
-	local burntRagdoll = ents.Create("prop_ragdoll")
-	burntRagdoll:SetModel("models/Humans/Charple01.mdl")
-	burntRagdoll.PingType = "DEAD BODY"
-	burntRagdoll.SurvivorSteamID = player:SteamID64()
-	burntRagdoll:AddEFlags(EFL_KEEP_ON_RECREATE_ENTITIES)
-
-	player.DeadBody = burntRagdoll
-
-	burntRagdoll:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
-	burntRagdoll:SetPos(player:GetPos())
-	burntRagdoll:SetNoDraw(false)
-	burntRagdoll:Spawn()
-	burntRagdoll:Activate()
-	burntRagdoll:Fire("Ignite", 0, 0)
-	ragdoll:Remove()
-
-	if not IsValid(burntRagdoll) then return end
-
-	for i = 0, burntRagdoll:GetPhysicsObjectCount() do
-		local phys = burntRagdoll:GetPhysicsObjectNum(i)
-
-		if IsValid(phys) then
-			phys:AddVelocity(-(self:GetPos() - burntRagdoll:GetPos()) * expKnockback)
-		end
-	end
-
-	return burntRagdoll
-end
-
 function ENT:Initialize()
 	self:SetNotSolid( true )
 	self:PhysicsInit( SOLID_VPHYSICS )
@@ -54,22 +21,13 @@ if SERVER then
 		local expRange = self:GetVar("expRange")
 		local expDamage = self:GetVar("expDamage")
 		local expDelay = self:GetVar("expDelay")
-		local expKnockback = self:GetVar("expKnockback")
+		local velocity = self:GetVar("velocity")
 		local triggeredColor = self:GetVar("triggeredColor")
 		local slowActive = self:GetVar("slowActive")
 		local slowMinDuration = self:GetVar("slowMinDuration")
 		local slowMaxDuration = self:GetVar("slowMaxDuration")
 		local slowMinDistance = self:GetVar("slowMinDistance")
 		local slowMaxDistance = self:GetVar("slowMaxDistance")
-
-		-- PrintMessage(HUD_PRINTCENTER,
-		-- 	"expRange: " .. tostring(expRange) .. "\n" ..
-		-- 	"expDamage: " .. tostring(expDamage) .. "\n" ..
-		-- 	"expDelay: " .. tostring(expDelay) .. "\n" ..
-		-- 	"expKnockback: " .. tostring(expKnockback) .. "\n" ..
-		-- 	"triggeredColor: " .. tostring(triggeredColor) .. "\n" ..
-		-- 	"self.pos: " .. tostring(self:GetPos())
-		-- )
 
 		self:SetColor(triggeredColor)
 		timer.Simple(expDelay, function()
@@ -91,10 +49,11 @@ if SERVER then
 				if (ent:Health() < expDamage) then
 					ent:Kill()
 
-					replaceRagdoll(self, ent, "models/Humans/Charple01.mdl", expKnockback)
+					local newragdoll = replaceRagdoll(ent, "models/Humans/Charple01.mdl", velocity, self:GetPos())
+					newragdoll:Fire("Ignite", 0)
 				end
 				ent:TakeDamage(expDamage, self, self)
-				ent:SetVelocity(-(pos - ent:GetPos()) * expKnockback)
+				ent:SetVelocity(-(pos - ent:GetPos()) * velocity)
 
 				if slowActive then
 					ent:AddEffect("Slowness",
@@ -133,6 +92,7 @@ if SERVER then
 
 	function ENT:Think()
 		if self:GetVar("maxNear") == nil then return end
+
 		-- We check it every second, there's no need for it to be any faster
 		self:NextThink(CurTime() + 1)
 
@@ -145,7 +105,7 @@ if SERVER then
 				counter = counter + 1
 			end
 		end
-		debugoverlay.Sphere(self:GetPos(), self:GetVar("expRange"), 1)
+
 		if counter >= self:GetVar("maxNear") then
 			self:Explode()
 		end

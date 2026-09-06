@@ -38,8 +38,7 @@ function SLASHER.InitHud(_, hud)
 	hud:SetCrosshairProngs(4)
 
 	hud:TieCrosshair({
-		"2011xCanTpToClone",
-		"2011xLookingAtFakeItem",
+		"2011xCanTriggerAim",
 		InvertOutput = true,
 		IsOr = true
 	}, {

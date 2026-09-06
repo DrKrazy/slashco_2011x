@@ -2,6 +2,40 @@
 	A bunch of helper functions used here and there, will remove some that are only used once in the future.
 ]]
 
+-- Replaces the player's ragdoll and adds velocity to it, it's just usefull
+function replaceRagdoll(player, model, velocity, velocity_origin)
+	local ragdoll = player.DeadBody
+	if IsValid(ragdoll) then
+		ragdoll:Remove()
+	end
+
+	local burntRagdoll = ents.Create("prop_ragdoll")
+	burntRagdoll:SetModel(model)
+	burntRagdoll:AddEFlags(EFL_KEEP_ON_RECREATE_ENTITIES)
+	burntRagdoll.PingType = "DEAD BODY"
+	burntRagdoll.SurvivorSteamID = player:SteamID64()
+
+	player.DeadBody = burntRagdoll
+
+	burntRagdoll:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
+	burntRagdoll:SetPos(player:GetPos())
+	burntRagdoll:SetNoDraw(false)
+	burntRagdoll:Spawn()
+	burntRagdoll:Activate()
+
+	if not IsValid(burntRagdoll) then return end
+
+	for i = 0, burntRagdoll:GetPhysicsObjectCount() do
+		local phys = burntRagdoll:GetPhysicsObjectNum(i)
+
+		if IsValid(phys) then
+			phys:AddVelocity(-(velocity_origin - burntRagdoll:GetPos()) * velocity)
+		end
+	end
+
+	return burntRagdoll
+end
+
 -- Logic to make either survivor or 2011x say a voice line (might be refined later)
 function sayPrompt(ply, input)
 	if ply:Team() == TEAM_SURVIVOR then
@@ -19,7 +53,7 @@ function sayPrompt(ply, input)
 	end
 end
 
--- Getting the voiceline suffix by ping type for fake items, used for survivors mainly
+-- Getting the voiceline suffix by ping type for fake items, used for survivors
 function GetVoiceByPingType(pingtype)
 	for _, item in ipairs(SLASHER.Config.FakeItem.spawnList) do
 		if item.pingtype == pingtype then
@@ -55,7 +89,7 @@ function SLASHER.spawnFakeItem(slasher)
 	fakeItem:SetVar("expRange", SLASHER.Config.FakeItem.expRange)
 	fakeItem:SetVar("expDamage", SLASHER.Config.FakeItem.expDamage)
 	fakeItem:SetVar("expDelay", SLASHER.Config.FakeItem.expDelay)
-	fakeItem:SetVar("expKnockback", SLASHER.Config.FakeItem.expKnockback)
+	fakeItem:SetVar("velocity", SLASHER.Config.FakeItem.expKnockback)
 	fakeItem:SetVar("maxNear", SLASHER.Config.FakeItem.maxNear)
 	fakeItem:SetVar("slowActive", SLASHER.Config.FakeItem.Slowness.active)
 	fakeItem:SetVar("slowMinDuration", SLASHER.Config.FakeItem.Slowness.minDuration)
@@ -89,7 +123,7 @@ function SLASHER.spawnTpClone(pos, ang)
 	clone:SetVar("clDuration", SLASHER.Config.Clones.duration)
 end
 
-function SLASHER.damagePlayer(slasher, victim, damage, damageForce)
+function SLASHER.damagePlayer(slasher, victim, damage, knockback)
 	if victim:IsValid() and victim:IsPlayer() then
 		-- If the victim is one hit, we jumpscare them instead (need to add jumps)
 		-- Have to make my own jumpscare logic cause stock one wouldn't work
@@ -117,7 +151,7 @@ function SLASHER.damagePlayer(slasher, victim, damage, damageForce)
 		victim:TakeDamageInfo(dmg)
 
 		-- We do this cause set damage force doesn't work for some reason
-		victim:SetVelocity(slasher:GetAimVector() * damageForce)
+		victim:SetVelocity(slasher:GetAimVector() * knockback)
 
 		effect:SetOrigin(victim:GetPos() + Vector(0,0,40))
 		util.Effect("BloodImpact", effect)
