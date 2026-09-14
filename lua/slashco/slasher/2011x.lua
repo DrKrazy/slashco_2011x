@@ -395,7 +395,11 @@ function SLASHER.OnTickBehaviour(slasher)
 
 	-- Logic for the charge, i wanna die this code fucking sucks
 	if slasher:GetNWBool("2011xCharging") then
-		slasher:SetVelocity(slasher:GetAimVector() * SLASHER.Config.Charge.speed)
+		slasher:AddVelocity(slasher:GetAimVector() * SLASHER.Config.Charge.speed)
+
+		if slasher:GetVelocity():LengthSqr() > 600 * 600 then
+			slasher:SetVelocity(slasher:GetVelocity():GetNormalized() * 600 - slasher:GetVelocity())
+		end
 
 		-- Hit detection, it's ass but it'll do
 		local entities = SlashCo.FindPlayersInRange(slasher:GetPos(), 80, TEAM_SURVIVOR, slasher)
@@ -801,9 +805,6 @@ elseif CLIENT then
 
 		halo.Add(lookingClones, Color(255,0,0), 1, 1, 2, nil, true)
 	end)
-
-	-- Main hud, we avoid loading this if the player isn't the slasher
-	if LocalPlayer():GetNWString("slasher") ~= "2011x" then return end
 
 	local iconTable = {
 		lmbTable = {
